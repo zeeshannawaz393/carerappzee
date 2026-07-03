@@ -187,7 +187,7 @@ export const carerStore = {
   trainingRenewal(recordId) { return s.trainRenew[recordId] || null },
   /* course resume bookmark (§28 — the SCORM cmi.location analog: current screen) */
   courseProgress(courseId) { return s.courseProg[courseId] || null },
-  setCourseProgress(courseId, screen) { s.courseProg[courseId] = { screen, at: now() }; save() },
+  setCourseProgress(courseId, screen, module = 0) { s.courseProg[courseId] = { screen, module, at: now() }; save() },
   clearCourseProgress(courseId) { delete s.courseProg[courseId]; save() },
 
   /* ---- cross-visit aggregation (office bridge) ---- */

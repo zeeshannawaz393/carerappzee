@@ -133,7 +133,7 @@ export const LEARNING_COURSES = [
   { id: 'mh', title: 'Moving & handling', cat: 'Mandatory', mins: 45, cpd: 1.5, validityMonths: 12, accreditation: ['CPD Certified', 'CSTF', 'RoSPA'], status: 'complete', completed: '2026-03-03', cstf: true, offline: true },
   { id: 'sg', title: 'Safeguarding adults', cat: 'Mandatory', mins: 60, cpd: 2, validityMonths: 24, accreditation: ['CPD Certified', 'CSTF', 'Skills for Care aligned'], status: 'complete', completed: '2026-02-12', cstf: true },
   { id: 'sgc', title: 'Safeguarding children', cat: 'Mandatory', mins: 45, cpd: 1.5, validityMonths: 24, accreditation: ['CPD Certified', 'CSTF'], status: 'not-started', cstf: true },
-  { id: 'med', title: 'Medication administration', cat: 'Mandatory', mins: 75, cpd: 2.5, validityMonths: 12, accreditation: ['CPD Certified', 'Skills for Care aligned'], status: 'complete', completed: '2026-04-04' },
+  { id: 'med', title: 'Medication administration', cat: 'Mandatory', mins: 75, cpd: 2.5, validityMonths: 12, accreditation: ['CPD Certified', 'Skills for Care aligned'], status: 'not-started', modules: 8 },
   { id: 'ipc', title: 'Infection prevention & control', cat: 'Mandatory', mins: 40, cpd: 1, validityMonths: 12, accreditation: ['CPD Certified', 'CSTF'], status: 'complete', completed: '2025-07-15', cstf: true },
   { id: 'bls', title: 'Basic life support', cat: 'Mandatory', mins: 50, cpd: 1.5, validityMonths: 12, accreditation: ['CPD Certified', 'CSTF'], status: 'complete', completed: '2025-06-01', cstf: true },
   { id: 'fire', title: 'Fire safety', cat: 'Mandatory', mins: 30, cpd: 1, validityMonths: 12, accreditation: ['CPD Certified', 'CSTF'], status: 'not-started', cstf: true },
@@ -319,19 +319,116 @@ export const LEARNING_CONTENT = {
     ],
   },
   med: {
-    points: ['Confirm the person with two identifiers before any high-risk record.', 'Follow the six rights before you give any medicine.', 'Record what you gave and report any error or refusal immediately.'],
-    blocks: [
-      { t: 'text', md: 'Safe medicines support protects people from avoidable harm. Always work to the **six rights** and to the person medicines care plan and MAR chart.' },
-      { t: 'callout', tone: 'info', title: 'The 6 Rights', body: 'Right person, right medicine, right dose, right route, right time, right to refuse — and always the right record.' },
-      { t: 'keypoints', items: ['Confirm the person with two identifiers', 'Check the MAR chart and the label match', 'Never crush or hide medicines unless the care plan and pharmacist agree'] },
-      { t: 'scenario', situation: 'A person refuses their morning tablet.', prompt: 'What do you do?', options: [ { label: 'Hide it in their food', correct: false, feedback: 'Covert administration without a proper plan is unlawful.' }, { label: 'Respect the refusal, record it on the MAR and report it', correct: true, feedback: 'Correct — the person has the right to refuse; record and report.' }, { label: 'Insist until they take it', correct: false, feedback: 'Forcing medicines removes choice and can be abuse.' } ] },
-      { t: 'callout', tone: 'danger', title: 'Errors', body: 'Report any medication error or missed dose immediately, even if no harm seems to have occurred.' },
+    points: ['Follow the six rights before you give any medicine.', 'Sign the MAR immediately after the person takes the dose.', 'Report any error, refusal or reaction straight away.'],
+    // Flagship enterprise course — 8 modules + a 12-question summative assessment.
+    // See docs/med-course-design.md. Grounded in NICE SC1/NG67, CQC, RPS and Skills for Care.
+    outcomes: [
+      'Describe the legal framework and your accountability for supporting medicines',
+      'Identify the types, forms and routes of medicines and the safe-practice points for each',
+      'Apply the six rights and the safe administration procedure',
+      'Complete a MAR chart accurately and use the correct codes',
+      'Follow PRN, covert and self-administration rules lawfully',
+      'Store, order and dispose of medicines safely',
+      'Recognise, record and report errors, refusals and adverse reactions',
+    ],
+    competency: {
+      observedBy: 'a senior carer, nurse or registered manager',
+      frequency: 'at least annually (NICE NG67/SC1), and after any error, absence or new medicine or route',
+      skillId: 'sk-med',
+    },
+    modules: [
+      {
+        id: 'm1', title: 'Your role, the law & accountability', mins: 10,
+        blocks: [
+          { t: 'text', md: 'Care workers support medicines in three ways — **prompting**, **assisting** and **administering**. You may only administer when it is part of your role **and** you have been **trained and assessed as competent**. Training on its own is not enough.' },
+          { t: 'definition', term: 'Trained and assessed as competent', meaning: 'You complete the theory (this course) and are then observed administering by a competent assessor who signs you off. Until then you must not administer unsupervised.' },
+          { t: 'keypoints', items: ['Human Medicines Regulations 2012', 'Misuse of Drugs Act 1971 (controlled drugs)', 'Mental Capacity Act 2005 (consent and covert administration)', 'Health & Social Care Act 2008 (Regulated Activities) Regulation 12 — safe care', 'Care Act 2014'] },
+          { t: 'callout', tone: 'info', title: 'Always gain consent', body: 'An adult with capacity can accept or refuse any medicine. Gain the person’s consent before you support their medicines.' },
+        ],
+        check: { t: 'single', q: 'You have finished this e-learning but have not yet been observed. Can you administer medicines unsupervised?', options: ['Yes — passing the course is enough', 'No — not until you are assessed as competent and signed off', 'Only if no one else is available'], answer: 1 },
+      },
+      {
+        id: 'm2', title: 'Types & forms of medicines', mins: 8,
+        blocks: [
+          { t: 'text', md: 'Medicines are legally classified as **POM** (prescription-only), **P** (pharmacy) and **GSL** (general sales list). Some are **controlled drugs (CDs)** and carry extra storage and recording rules.' },
+          { t: 'keypoints', items: ['Tablets and capsules', 'Liquids and suspensions', 'Creams and ointments', 'Transdermal patches', 'Eye, ear and nose drops', 'Inhalers', 'Injections', 'Suppositories and enemas'] },
+          { t: 'definition', term: 'PRN', meaning: '“pro re nata” — medicine given “as required” (for example pain relief) to an agreed protocol, rather than at fixed times.' },
+          { t: 'callout', tone: 'warning', title: 'Time-critical medicines', body: 'Parkinson’s medicines, insulin and some epilepsy medicines must be given within a narrow time window. A late or missed dose can cause serious harm.' },
+        ],
+        check: { t: 'multi', q: 'Which of these are legal classifications of medicines? (select all that apply)', options: ['POM (prescription-only)', 'P (pharmacy)', 'GSL (general sales list)', 'PRN (as required)'], answers: [0, 1, 2] },
+      },
+      {
+        id: 'm3', title: 'Routes of administration', mins: 8,
+        blocks: [
+          { t: 'text', md: 'The **route** is how a medicine enters the body. Always give by the **prescribed route only** — never change it.' },
+          { t: 'dosdonts', dos: ['Read the label for the correct route', 'Position the person safely and comfortably', 'Watch that oral medicines are actually swallowed'], donts: ['Crush tablets unless a pharmacist or prescriber has agreed', 'Touch the adhesive side of a patch', 'Put drops in the wrong eye or ear'] },
+          { t: 'keypoints', items: ['Oral: upright, offer a drink, observe it is taken', 'Patch: rotate the site, remove the old patch, record on a body map', 'Inhaler: check the dose counter, correct technique, rinse the mouth after a steroid inhaler', 'Drops: correct side, do not touch the nozzle', 'PEG / enteral: flush the tube, only if trained', 'Buccal / sublingual: held in the cheek or under the tongue, not swallowed'] },
+        ],
+        check: { t: 'single', q: 'Can you crush a tablet to make it easier for someone to swallow?', options: ['Yes, whenever it helps', 'Only if a pharmacist or prescriber has agreed it', 'Never, under any circumstances'], answer: 1 },
+      },
+      {
+        id: 'm4', title: 'The six rights & safe administration', mins: 10,
+        blocks: [
+          { t: 'callout', tone: 'info', title: 'The 6 Rights', body: 'Right person, right medicine, right dose, right route, right time — and the right documentation. Some add the right to refuse.' },
+          { t: 'keypoints', items: ['Wash your hands', 'Check the person has not already had the dose', 'Confirm the person’s identity', 'Cross-check the MAR against the label — medicine, dose, route, time', 'Check for allergies', 'Check the expiry date', 'Check any cautionary warnings'] },
+          { t: 'scenario', situation: 'The MAR says one tablet at 8am, but the pharmacy label on the box says two.', prompt: 'What do you do?', options: [ { label: 'Give one to match the MAR', correct: false, feedback: 'Do not guess — the two records disagree and must be resolved first.' }, { label: 'Do not give it; stop and check with the pharmacy or your senior', correct: true, feedback: 'Correct — the MAR and the label must match before you give anything.' }, { label: 'Give two to match the label', correct: false, feedback: 'Do not guess — giving the wrong dose can seriously harm.' } ] },
+          { t: 'callout', tone: 'warning', title: 'One at a time', body: 'Support one person at a time and keep medicines secure — never leave them unattended.' },
+        ],
+        check: { t: 'multi', q: 'Which checks must you make before administering? (select all that apply)', options: ['Confirm the person’s identity', 'Cross-check the MAR against the label', 'Check for allergies', 'Check the expiry date'], answers: [0, 1, 2, 3] },
+      },
+      {
+        id: 'm5', title: 'The MAR chart & record-keeping', mins: 8,
+        blocks: [
+          { t: 'text', md: 'The **MAR** (Medication Administration Record) is the legal record of what was prescribed and what you gave. Sign it **immediately after** the person takes the medicine — never in advance.' },
+          { t: 'keypoints', items: ['If a dose is not given, do not leave a gap — enter the correct code (refused, not available, in hospital, asleep, social leave) and explain it', 'Handwritten entries are made by two staff and checked', 'At the end of a round, confirm the MAR is fully completed'] },
+          { t: 'definition', term: 'eMAR', meaning: 'An electronic MAR that flags missed or late doses in real time and reduces gaps and transcription errors.' },
+          { t: 'callout', tone: 'danger', title: 'A gap is a failure', body: 'A gap on a MAR means no one knows whether the dose was given. Always sign or code every single dose.' },
+        ],
+        check: { t: 'single', q: 'When should you sign the MAR chart?', options: ['At the start of the round for all doses', 'Immediately after the person has taken the medicine', 'At the end of your shift'], answer: 1 },
+      },
+      {
+        id: 'm6', title: 'PRN, covert & self-administration', mins: 10,
+        blocks: [
+          { t: 'text', md: '**PRN** (“as required”) medicines are given only when needed. Each one must have a **PRN protocol** stating the reason, the dose, the **maximum in 24 hours** and the **minimum gap** between doses.' },
+          { t: 'callout', tone: 'danger', title: 'Check the last dose', body: 'Before a PRN dose, check the MAR for when the last dose was given. Never breach the maximum dose or the minimum interval.' },
+          { t: 'definition', term: 'Covert administration', meaning: 'Hiding medicine in food or drink. It is lawful only for a person who lacks capacity for the decision, after a best-interests process involving the pharmacist, prescriber and family, with a documented plan. Never do this to a person with capacity.' },
+          { t: 'keypoints', items: ['Self-administration: support independence where a risk assessment shows it is safe; store the person’s medicines securely and record the arrangement', 'Controlled drugs: keep in a locked CD cabinet, record in the CD register, and witness administration in a care home'] },
+        ],
+        check: { t: 'single', q: 'A person who has capacity refuses a tablet. Can you hide it in their food?', options: ['Yes, to make sure they get it', 'No — covert administration of a person with capacity is unlawful; record the refusal and report it', 'Only if a relative agrees'], answer: 1 },
+      },
+      {
+        id: 'm7', title: 'Storage, ordering & disposal', mins: 6,
+        blocks: [
+          { t: 'keypoints', items: ['Store medicines securely at the right temperature', 'Fridge items: 2–8 °C, with a daily temperature check', 'Controlled drugs: in a locked CD cabinet'] },
+          { t: 'dosdonts', dos: ['Order on a regular monthly cycle', 'Check deliveries against the MAR', 'Record opening dates on drops and liquids'], donts: ['Stockpile medicines', 'Use a medicine past its expiry or “use-by after opening” date', 'Put medicines in general household waste'] },
+          { t: 'callout', tone: 'info', title: 'Safe disposal', body: 'Return unwanted or expired medicines to the pharmacy. Controlled drugs are denatured and disposed of through a controlled process. Record what was returned.' },
+        ],
+        check: { t: 'single', q: 'Medicines that need refrigerating should be kept at:', options: ['Below 0 °C', '2–8 °C, with a daily temperature check', 'Room temperature'], answer: 1 },
+      },
+      {
+        id: 'm8', title: 'Errors, refusals & reporting', mins: 8,
+        blocks: [
+          { t: 'text', md: 'Everyone makes the occasional mistake. What matters is that you **report it immediately** and honestly so the person can be kept safe. This is the **duty of candour**.' },
+          { t: 'keypoints', items: ['Report straight away: a wrong dose, medicine, person or time, or a missed dose', 'Report any suspected reaction or side-effect', 'Seek medical advice (GP / 111 / 999) if the person is unwell', 'Record the facts on the MAR and the incident system'] },
+          { t: 'scenario', situation: 'You realise you have given Mr Cole’s tablets to Mrs Ford.', prompt: 'What do you do?', options: [ { label: 'Wait to see if she becomes unwell', correct: false, feedback: 'Never wait — harm can develop and the delay makes it worse.' }, { label: 'Report it immediately to your senior, seek medical advice and record it', correct: true, feedback: 'Correct — report at once, get medical advice, and document it honestly.' }, { label: 'Say nothing as no harm has been done', correct: false, feedback: 'Concealing an error breaches the duty of candour and risks the person’s safety.' } ] },
+          { t: 'callout', tone: 'warning', title: 'The right to refuse', body: 'A person with capacity has the right to refuse. Never force or trick them — record the refusal with the reason and report it if refusals continue or the medicine is critical.' },
+        ],
+        check: { t: 'single', q: 'You have given a medicine to the wrong person. You should:', options: ['Report it immediately and seek medical advice', 'Keep it quiet if there is no obvious harm', 'Fix it at the next visit'], answer: 0 },
+      },
     ],
     quiz: [
-      { t: 'single', q: 'Before administering, you confirm the person by:', options: ['Room number only', 'Two identifiers (e.g. name + DOB)', 'Their word alone'], answer: 1 },
+      { t: 'single', q: 'Before administering, you confirm the person by:', options: ['Room number only', 'Confirming their identity (e.g. name + date of birth)', 'Their word alone'], answer: 1 },
       { t: 'multi', q: 'The six rights of medication include (select all that apply):', options: ['Right person', 'Right dose', 'Right route', 'Right colour'], answers: [0, 1, 2] },
-      { t: 'single', q: 'If a dose is refused you should:', options: ['Hide it in food', 'Record the refusal and report it', 'Force the medication'], answer: 1 },
-      { t: 'single', q: 'A medication error should be:', options: ['Reported immediately', 'Kept quiet if no harm', 'Corrected next visit'], answer: 0 },
+      { t: 'single', q: 'You may administer medicines unsupervised when:', options: ['You have completed the e-learning', 'You are trained AND assessed as competent and signed off', 'A colleague is nearby'], answer: 1 },
+      { t: 'multi', q: 'Which are legal classifications of medicines? (select all that apply)', options: ['POM (prescription-only)', 'P (pharmacy)', 'GSL (general sales list)', 'PRN (as required)'], answers: [0, 1, 2] },
+      { t: 'single', q: 'You may crush a tablet:', options: ['Whenever it is easier for the person', 'Only if a pharmacist or prescriber has agreed', 'Never'], answer: 1 },
+      { t: 'single', q: 'The MAR chart should be signed:', options: ['Before the round starts', 'Immediately after the person takes the dose', 'At the end of the shift'], answer: 1 },
+      { t: 'single', q: 'A dose that is not given should be:', options: ['Left as a blank gap', 'Recorded with the correct MAR code and explained', 'Given later to catch up'], answer: 1 },
+      { t: 'single', q: 'Covert administration (hiding medicine in food) is:', options: ['Fine if it helps the person', 'Lawful only for a person who lacks capacity, after a best-interests process', 'Decided by the care worker alone'], answer: 1 },
+      { t: 'single', q: 'Before giving a PRN dose you must check:', options: ['Nothing — give it when asked', 'The protocol and when the last dose was given', 'Only the expiry date'], answer: 1 },
+      { t: 'single', q: 'Fridge medicines should be stored at:', options: ['2–8 °C with a daily temperature check', 'Below freezing', 'Any cool place'], answer: 0 },
+      { t: 'single', q: 'A person with capacity refuses their medicine. You should:', options: ['Hide it in their food', 'Record the refusal and report it', 'Insist until they take it'], answer: 1 },
+      { t: 'single', q: 'A medication error should be:', options: ['Reported immediately', 'Kept quiet if no harm is seen', 'Corrected at the next visit'], answer: 0 },
     ],
   },
   ipc: {

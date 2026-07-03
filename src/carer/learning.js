@@ -38,6 +38,12 @@ function fmtDate(iso) {
   return `${d.getUTCDate()} ${CERT_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
 }
 
+/** True when a course has a multi-module structure (the enterprise player). */
+function isModular(c) {
+  const ct = LEARNING_CONTENT[c.id]
+  return !!(ct && Array.isArray(ct.modules) && ct.modules.length)
+}
+
 /** merge catalogue defaults with persisted completion, else a resume bookmark. */
 function withState(c) {
   const st = carerStore.courseState(c.id)
@@ -45,6 +51,12 @@ function withState(c) {
   const prog = carerStore.courseProgress(c.id)
   if (prog) {
     const ct = LEARNING_CONTENT[c.id]
+    // Modular course: progress + resume are module-based.
+    if (ct && Array.isArray(ct.modules) && ct.modules.length) {
+      const nMods = ct.modules.length
+      const doneCount = Math.min(prog.module || 0, nMods)
+      return { ...c, status: 'in-progress', progress: Math.min(99, Math.max(5, Math.round((doneCount / nMods) * 100))), resumeModule: Math.min(prog.module || 0, nMods - 1), resumeScreen: prog.screen || 0, resumeDone: doneCount }
+    }
     const n = ct && Array.isArray(ct.blocks) && ct.blocks.length ? ct.blocks.length : 1
     return { ...c, status: 'in-progress', progress: Math.min(99, Math.round((prog.screen / n) * 100)), resumeScreen: prog.screen }
   }
@@ -153,6 +165,7 @@ function lessonBody(ct) {
 function courseModal(c) {
   const ct = LEARNING_CONTENT[c.id]
   if (!ct) return ''
+  if (Array.isArray(ct.modules) && ct.modules.length) return courseModalModular(c, ct)
   // Normalise: quiz is now an ARRAY of questions.
   const quiz = Array.isArray(ct.quiz) ? ct.quiz : [ct.quiz]
   const total = quiz.length

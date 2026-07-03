@@ -18,7 +18,7 @@ import {
 import { carerStore } from '../lib/carerStore.js'
 import { mobileFlow, keySafe } from '../carer/frame.js'
 import { MAR_STATUS_CODES } from '../data/marCodes.js'
-import { BODY_PART_SUGGESTIONS } from '../data/bodyMapHotspots.js'
+import { BODY_PART_SUGGESTIONS, SITTING_HOTSPOTS, LYING_HOTSPOTS } from '../data/bodyMapHotspots.js'
 
 /* Map a chosen MAR code → the app's existing dose-outcome id so all the eMAR
  * safety gating (witness, allergy, reconciliation, reason) keeps working. */
@@ -626,6 +626,7 @@ function bodyMapControl(arrExpr) {
       <div class="relative mx-auto rounded-lg ring-1 ring-ink-200 bg-white overflow-hidden select-none" style="max-width:280px"
         @click="if($event.target.closest('[data-pin]'))return; const r=$event.currentTarget.getBoundingClientRect(); const x=Math.round((($event.clientX-r.left)/r.width)*1000)/10; const y=Math.round((($event.clientY-r.top)/r.height)*1000)/10; if(x<0||x>100||y<0||y>100)return; const p=(window.__bodySnap?window.__bodySnap(view,x,y):''); (${arrExpr} = ${arrExpr} || []).push({ view, x, y, part:p }); if(p) window.__notify('Marked: '+p,'info')">
         <img :src="'/body-map/'+view+'.svg'" class="w-full block pointer-events-none" alt="Body map — tap to mark a point" />
+        ${[['sitting', SITTING_HOTSPOTS], ['lying', LYING_HOTSPOTS]].map(([v, spots]) => spots.map((s) => `<span x-show="view==='${v}'" class="absolute -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full ring-1 ring-primary-400/70 bg-primary-400/15 pointer-events-none" style="left:${s.x}%;top:${s.y}%" title="${esc(s.part)}"></span>`).join('')).join('')}
         <template x-for="(m,i) in (${arrExpr}||[])" :key="i">
           <button data-pin type="button" x-show="m.view===view" @click.stop="${arrExpr}.splice(i,1)" class="absolute -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-danger-500 text-white text-[10px] font-bold grid place-items-center ring-2 ring-white shadow-[var(--shadow-pop)]" :style="'left:'+m.x+'%;top:'+m.y+'%'" x-text="i+1"></button>
         </template>

@@ -141,7 +141,7 @@ window.__completeCourse = (courseId, title) => {
   toast(`${title || 'Course'} completed — certificate issued & CPD updated`, 'success')
 }
 /* §28 — save the learner's current lesson screen (resume bookmark); no re-render. */
-window.__courseProgress = (courseId, screen) => { carerStore.setCourseProgress(courseId, Number(screen) || 0) }
+window.__courseProgress = (courseId, screen, module) => { carerStore.setCourseProgress(courseId, Number(screen) || 0, Number(module) || 0) }
 window.__carerRole = (roleId) => { session.setRole(roleId); handleRoute(); toast('Acting role changed', 'info') }
 window.__carerLogin = () => { session.login(); navigate('/carer') }
 window.__carerOnboard = () => { session.completeOnboarding(); navigate('/carer') }
