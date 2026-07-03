@@ -94,7 +94,7 @@ export function renderToday() {
           ${avatar(next.su, 'lg')}
           <div class="min-w-0 flex-1"><p class="text-xl font-bold text-ink-900 leading-tight truncate">${esc(next.su.name)}</p><p class="text-sm text-ink-500 truncate mt-0.5">${esc(next.rota.visit)} visit${next.rota.twoCarer ? ' · 2 carers' : ''}${ETA[next.rota.id] ? ' · ' + ETA[next.rota.id] : ''}</p></div>
         </div>
-        ${(next.su.allergies || []).length ? `<div class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-danger-50 text-danger-700 ring-1 ring-danger-100 px-2.5 py-1 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}Allergies: ${esc(next.su.allergies.join(', '))}</div>` : ''}
+        ${(next.su.allergies || []).length ? `<div class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-danger-50 text-danger-700 px-2.5 py-1 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}Allergies: ${esc(next.su.allergies.join(', '))}</div>` : ''}
         <div class="flex gap-2 mt-4">
           <a href="#/carer/visit/${next.rota.id}" class="btn btn-primary btn-lg flex-1">${icon(inProgress ? 'arrow-right' : 'clock', 'w-4 h-4')}${inProgress ? 'Resume visit' : 'Start visit'}</a>
           <button onclick="window.__notify('Opening directions…','info')" aria-label="Directions" class="btn btn-secondary btn-lg !px-3.5">${icon('map-pin', 'w-4 h-4')}</button>

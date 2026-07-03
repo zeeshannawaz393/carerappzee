@@ -144,7 +144,7 @@ function renderBlock(b) {
     case 'resource':
       return html`<div class="rounded-xl ring-1 ring-ink-100 p-3 flex items-center gap-2.5"><span class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 grid place-items-center shrink-0">${icon('file-check', 'w-4 h-4')}</span><p class="flex-1 text-[13px] font-medium text-ink-800">${esc(b.label || 'Resource')}</p><button type="button" onclick="window.__notify('Resource downloaded','success')" class="btn btn-secondary btn-sm shrink-0">${icon('download', 'w-3.5 h-3.5')}Get</button></div>`
     case 'standard':
-      return html`<div class="flex"><span class="inline-flex items-center gap-1 rounded-md bg-teal-50 text-teal-700 ring-1 ring-teal-100 px-2 py-1 text-[11px] font-medium">${icon('shield', 'w-3 h-3')}${esc(b.text)}</span></div>`
+      return html`<div class="flex"><span class="inline-flex items-center gap-1 rounded-md bg-teal-50 text-teal-700 px-2 py-1 text-[11px] font-medium">${icon('shield', 'w-3 h-3')}${esc(b.text)}</span></div>`
     case 'image':
       return html`<div class="rounded-xl ring-1 ring-ink-100 bg-ink-50 p-4 text-center"><span class="w-10 h-10 rounded-lg bg-ink-200 text-ink-500 grid place-items-center mx-auto mb-1.5">${icon('layers', 'w-5 h-5')}</span><p class="text-[12px] text-ink-500">${esc(b.caption || 'Diagram')}</p></div>`
     default:
@@ -473,7 +473,7 @@ function certModal(c) {
 function accreditationChips(c) {
   const accs = (c.accreditation || []).slice(0, 3)
   if (!accs.length) return ''
-  return html`<div class="flex flex-wrap items-center gap-1 mt-1.5">${map(accs, (a) => html`<span class="inline-flex items-center rounded-md bg-ink-50 text-ink-500 ring-1 ring-ink-200 px-1.5 py-0.5 text-[10px] font-medium">${esc(a)}</span>`)}</div>`
+  return html`<div class="flex flex-wrap items-center gap-1 mt-1.5">${map(accs, (a) => html`<span class="inline-flex items-center rounded-md bg-ink-50 text-ink-500 px-1.5 py-0.5 text-[10px] font-medium">${esc(a)}</span>`)}</div>`
 }
 
 /** A refresh chip shown on completed courses whose validity has lapsed. */

@@ -165,7 +165,7 @@ export function renderCapacity({ id }) {
               <div><dt class="text-ink-500">Review</dt><dd class="text-ink-700">${esc(fmtDMY(d.review))}</dd></div>
               <div class="col-span-2"><dt class="text-ink-500">Assessor</dt><dd class="text-ink-700">${esc(d.assessor)}</dd></div>
             </dl>
-            ${d.fluctuates ? `<div class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-warning-50 text-warning-700 ring-1 ring-warning-100 px-2 py-1 text-xs font-semibold">${icon('clock', 'w-3.5 h-3.5')}Capacity fluctuates — reassess at the time</div>` : ''}
+            ${d.fluctuates ? `<div class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-warning-50 text-warning-700 px-2 py-1 text-xs font-semibold">${icon('clock', 'w-3.5 h-3.5')}Capacity fluctuates — reassess at the time</div>` : ''}
             ${d.note ? `<p class="text-xs text-ink-500 mt-1.5">${esc(d.note)}</p>` : ''}
             ${d.authority ? `<div class="mt-2 rounded-lg bg-danger-50 ring-1 ring-danger-100 p-2.5"><p class="text-xs font-semibold text-danger-800">Decision authority: ${esc(d.authority)}</p></div>` : ''}
           </div>`)}

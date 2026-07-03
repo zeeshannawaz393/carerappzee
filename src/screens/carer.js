@@ -822,8 +822,8 @@ export function renderCarerVisit({ visit }) {
   const chipTone = { danger: 'bg-danger-50 text-danger-700 ring-danger-100', warning: 'bg-warning-50 text-warning-700 ring-warning-100', ok: 'bg-success-50 text-success-700 ring-success-100' }
   const hasHeaderCare = resusView.tone !== 'ok' || flags.length
   const headerCareChips =
-    (resusView.tone !== 'ok' ? `<span class="inline-flex items-center gap-1.5 rounded-lg ${chipTone[resusView.tone]} ring-1 px-2 py-0.5 text-xs font-semibold">${icon('heart', 'w-3.5 h-3.5')}${esc(resusView.short)}</span>` : '') +
-    flags.map((f) => `<span class="inline-flex items-center gap-1.5 rounded-lg bg-ink-100 text-ink-700 ring-1 ring-ink-200 px-2 py-0.5 text-xs font-semibold">${esc(f)}</span>`).join('')
+    (resusView.tone !== 'ok' ? `<span class="inline-flex items-center gap-1.5 rounded-lg ${chipTone[resusView.tone]} px-2 py-0.5 text-xs font-semibold">${icon('heart', 'w-3.5 h-3.5')}${esc(resusView.short)}</span>` : '') +
+    flags.map((f) => `<span class="inline-flex items-center gap-1.5 rounded-lg bg-ink-100 text-ink-700 px-2 py-0.5 text-xs font-semibold">${esc(f)}</span>`).join('')
   const commsChips = cn ? [cn.vision, cn.hearing && cn.hearing !== 'Good' ? 'Hearing: ' + cn.hearing : '', cn.largePrint ? 'Large print' : '', cn.easyRead ? 'Easy Read' : '', cn.bsl ? 'BSL' : ''].filter(Boolean) : []
   const commsCardMarkup = cn ? `<div class="card p-4">
       <p class="section-title mb-1.5 flex items-center gap-1.5">${icon('info', 'w-3.5 h-3.5')}Communication &amp; sensory</p>
@@ -874,10 +874,10 @@ export function renderCarerVisit({ visit }) {
         </div>
         <div x-show="(su.allergies||[]).length || allergyState.warn || ${hasHeaderCare ? 'true' : 'false'}" class="flex flex-wrap items-center gap-1.5 mt-2">
           <template x-if="(su.allergies||[]).length">
-            <span class="inline-flex items-center gap-1.5 rounded-lg bg-danger-50 text-danger-700 ring-1 ring-danger-100 px-2 py-0.5 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}Allergies: <span x-text="su.allergies.join(', ')"></span></span>
+            <span class="inline-flex items-center gap-1.5 rounded-lg bg-danger-50 text-danger-700 px-2 py-0.5 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}Allergies: <span x-text="su.allergies.join(', ')"></span></span>
           </template>
           <template x-if="allergyState.warn">
-            <span class="inline-flex items-center gap-1.5 rounded-lg bg-warning-50 text-warning-700 ring-1 ring-warning-100 px-2 py-0.5 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}<span x-text="allergyState.label"></span></span>
+            <span class="inline-flex items-center gap-1.5 rounded-lg bg-warning-50 text-warning-700 px-2 py-0.5 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}<span x-text="allergyState.label"></span></span>
           </template>
           ${headerCareChips}
         </div>
@@ -1197,7 +1197,7 @@ export function renderCarerVisit({ visit }) {
                   <p class="text-[15px] font-semibold text-ink-900 mb-2.5">How did you support?</p>
                   <div class="flex flex-wrap gap-2">
                     <template x-for="s in SUPPORT_ACTIONS" :key="s.id">
-                      <button type="button" @click="supportAction=s.id" :class="supportAction===s.id ? 'bg-primary-600 text-white ring-primary-600' : 'bg-surface text-ink-600 ring-ink-200'" class="rounded-full ring-1 px-3.5 py-2 text-[13px] font-medium" x-text="s.label"></button>
+                      <button type="button" @click="supportAction=s.id" :class="supportAction===s.id ? 'bg-primary-600 text-white' : 'bg-ink-100 text-ink-600'" class="rounded-full px-4 py-2.5 text-[13px] font-medium" x-text="s.label"></button>
                     </template>
                   </div>
                 </div>
@@ -1373,7 +1373,7 @@ export function renderCarerVisit({ visit }) {
                 <p class="text-xs mt-0.5" :class="checkinGeofence==='inside' ? 'text-success-700' : 'text-warning-800'" x-text="su.address"></p>
               </div>
               ${errorBox}
-              <div><p class="text-[15px] font-semibold text-ink-900 mb-2.5">Check-in method</p><div class="flex flex-wrap gap-2"><template x-for="m in CHECKIN_METHODS" :key="m.id"><button type="button" @click="checkinMethod=m.id" :class="checkinMethod===m.id ? 'bg-primary-600 text-white ring-primary-600' : 'bg-surface text-ink-600 ring-ink-200'" class="rounded-full ring-1 px-3.5 py-2 text-[13px] font-medium" x-text="m.label"></button></template></div></div>
+              <div><p class="text-[15px] font-semibold text-ink-900 mb-2.5">Check-in method</p><div class="flex flex-wrap gap-2"><template x-for="m in CHECKIN_METHODS" :key="m.id"><button type="button" @click="checkinMethod=m.id" :class="checkinMethod===m.id ? 'bg-primary-600 text-white' : 'bg-ink-100 text-ink-600'" class="rounded-full px-4 py-2.5 text-[13px] font-medium" x-text="m.label"></button></template></div></div>
               <template x-if="checkinMethod==='manual' || checkinGeofence==='outside'"><div><label class="label">Reason *</label><input x-model="checkinReason" class="field field-md" placeholder="Why manual / out of geofence?" /></div></template>
               <div><p class="text-[15px] font-semibold text-ink-900 mb-2.5">On-entry welfare</p><div class="rounded-2xl ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden"><template x-for="w in WELFARE_OUTCOMES" :key="w.id"><button type="button" @click="welfare=w.id" :class="welfare===w.id ? 'bg-primary-50' : ''" class="w-full flex items-center gap-3 px-3.5 py-3 text-left"><span class="w-3 h-3 rounded-full shrink-0" :class="w.tone==='ok'?'bg-success-500':w.tone==='warn'?'bg-warning-500':'bg-danger-500'"></span><span class="flex-1 text-sm font-medium text-ink-800" x-text="w.label"></span><span x-show="welfare===w.id" class="text-primary-600">${icon('check', 'w-4 h-4')}</span></button></template></div></div>
             </div>

@@ -177,8 +177,10 @@
   .sheet-body .field { @apply ring-ink-200; }
 
   /* ---- Badges / chips ---- */
+  /* Soft filled chips — no hard border. Colour comes from the bg/text utilities at
+     the call site; any leftover ring colour class is inert without a ring width. */
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset;
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
   }
 
   /* ---- Table ---- */

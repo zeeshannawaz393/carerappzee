@@ -43,5 +43,5 @@ export function syncChip(queued) {
   if (queued > 0) {
     return html`<button onclick="window.__carerSync && window.__carerSync()" class="inline-flex items-center gap-1.5 rounded-full bg-warning-50 text-warning-700 ring-1 ring-warning-100 px-2.5 py-1 text-[11px] font-semibold">${icon('wifi', 'w-3.5 h-3.5')}${queued} to sync</button>`
   }
-  return html`<span class="inline-flex items-center gap-1.5 rounded-full bg-success-50 text-success-700 ring-1 ring-success-100 px-2.5 py-1 text-[11px] font-semibold">${icon('check-circle', 'w-3.5 h-3.5')}Synced</span>`
+  return html`<span class="inline-flex items-center gap-1.5 rounded-full bg-success-50 text-success-700 px-2.5 py-1 text-[11px] font-semibold">${icon('check-circle', 'w-3.5 h-3.5')}Synced</span>`
 }
