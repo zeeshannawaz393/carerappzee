@@ -154,6 +154,10 @@ export function registerCarerApp(Alpine) {
       if (/palliat|end of life/.test(f)) ids.push('pain')
       return [...new Set(ids)].map((id) => OBSERVATION_TYPES.find((o) => o.id === id)).filter(Boolean)
     },
+    get abnormalObsCount() { return this.observations.filter((o) => o.flag === 'abnormal').length },
+    get sortedObs() { return [...this.observations].sort((a, b) => (b.flag === 'abnormal') - (a.flag === 'abnormal')) },
+    get vitalObs() { return (this.obsByGroup.find((g) => g.g === 'Vital signs') || {}).items || [] },
+    get moreObsGroups() { return this.obsByGroup.filter((g) => g.g !== 'Vital signs') },
     get progress() {
       // Medication tasks are represented by their scheduled meds (recorded on the
       // eMAR), so exclude them here to avoid double-counting.
@@ -493,6 +497,12 @@ export function registerCarerApp(Alpine) {
       const t = observationType(o.typeId)
       return (t?.fields || []).filter((f) => f.key !== 'note' && o.values[f.key] !== '' && o.values[f.key] != null)
         .map((f) => `${f.type === 'bodymap' ? (o.values[f.key] || []).map((m) => (m && (m.part || m.view)) || '').filter(Boolean).join(', ') : o.values[f.key]}${f.unit ? ' ' + f.unit : ''}`).filter(Boolean).slice(0, 3).join(' · ')
+    },
+    /** The normal range for the breached numeric field of an observation type. */
+    normalRange(o) {
+      const t = observationType(o.typeId); if (!t) return ''
+      const f = (t.fields || []).find((x) => x.type === 'number' && (x.normalMin != null || x.normalMax != null))
+      return f ? `Normal ${f.normalMin}–${f.normalMax}${f.unit ? ' ' + f.unit : ''}` : ''
     },
 
     /* ---------- incidents ---------- */
@@ -1023,39 +1033,90 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- OBSERVATIONS -->
-        <div x-show="tab==='obs'" x-cloak class="p-4 space-y-4">
-          <div class="rounded-xl bg-teal-50 ring-1 ring-teal-100 p-3 text-sm text-teal-800 flex items-center gap-2">${icon('activity', 'w-4 h-4')}Record any clinical observation. Abnormal readings launch a protocol.</div>
-          <button @click="sheet='protocolPick'" class="btn btn-danger btn-md w-full">${icon('shield', 'w-4 h-4')}Launch emergency protocol</button>
-          <template x-if="recommendedObs.length">
-            <div><p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Recommended for this client</p><div class="flex flex-wrap gap-2"><template x-for="ot in recommendedObs" :key="ot.id"><button @click="openObs(ot)" class="badge bg-info-50 text-info-700 ring-info-100"><span x-html="window.__obsIcon(ot.icon)"></span><span x-text="ot.name"></span></button></template></div></div>
+        <div x-show="tab==='obs'" x-cloak class="p-4 space-y-5" x-data="{ moreObs:false }">
+
+          <!-- 1 · abnormal summary (only when something needs attention) -->
+          <template x-if="abnormalObsCount">
+            ${banner('danger', html`<span class="font-semibold"><span x-text="abnormalObsCount"></span> abnormal reading<span x-show="abnormalObsCount>1" x-cloak>s</span></span> this visit — office alerted. Review below.`)}
           </template>
-          <div x-show="observations.length">
-            <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Recorded this visit (<span x-text="observations.length"></span>)</p>
-            <div class="space-y-2">
-              <template x-for="o in observations" :key="o.id">
-                <div class="card p-3 flex items-center gap-3">
-                  <span class="w-8 h-8 rounded-lg grid place-items-center shrink-0" :class="o.flag==='abnormal' ? 'bg-danger-50 text-danger-600' : 'bg-success-50 text-success-600'" x-html="window.__obsIcon(o.icon)"></span>
-                  <div class="min-w-0 flex-1"><p class="text-sm font-semibold text-ink-900" x-text="o.typeName"></p><p class="text-xs text-ink-400 truncate" x-text="obsSummary(o) + ' · ' + o.at"></p></div>
-                  <span class="badge" :class="o.flag==='abnormal' ? 'bg-danger-50 text-danger-700 ring-danger-100' : 'bg-success-50 text-success-700 ring-success-100'" x-text="o.flag==='abnormal' ? 'Abnormal' : 'Normal'"></span>
-                </div>
-              </template>
-            </div>
-          </div>
+
+          <!-- 2 · record an observation (primary task) -->
           <div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Add observation</p>
-            <template x-for="grp in obsByGroup" :key="grp.g">
-              <div class="mb-3">
-                <p class="text-xs font-medium text-ink-400 mb-1.5" x-text="grp.g"></p>
-                <div class="grid grid-cols-3 gap-2">
-                  <template x-for="ot in grp.items" :key="ot.id">
-                    <button @click="openObs(ot)" class="card p-2.5 flex flex-col items-center gap-1.5 text-center active:scale-[.97]">
-                      <span class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 grid place-items-center" x-html="window.__obsIcon(ot.icon)"></span>
-                      <span class="text-xs font-medium text-ink-700 leading-tight" x-text="ot.name"></span>
-                    </button>
+            <p class="text-[15px] font-semibold text-ink-900 mb-3">Record observation</p>
+
+            <template x-if="recommendedObs.length">
+              <div class="mb-4">
+                <p class="section-title mb-2">Suggested for this client</p>
+                <div class="flex flex-wrap gap-2">
+                  <template x-for="ot in recommendedObs" :key="ot.id">
+                    <button @click="openObs(ot)" class="inline-flex items-center gap-1.5 rounded-full bg-primary-50 text-primary-700 px-3 py-2 text-[13px] font-medium active:bg-primary-100"><span x-html="window.__obsIcon(ot.icon)"></span><span x-text="ot.name"></span></button>
                   </template>
                 </div>
               </div>
             </template>
+
+            <p class="section-title mb-2">Vital signs</p>
+            <div class="grid grid-cols-2 gap-2.5">
+              <template x-for="ot in vitalObs" :key="ot.id">
+                <button @click="openObs(ot)" class="rounded-2xl bg-white ring-1 ring-ink-100 p-3.5 min-h-[60px] flex items-center gap-3 text-left active:bg-ink-50">
+                  <span class="w-9 h-9 rounded-lg bg-ink-50 text-ink-500 grid place-items-center shrink-0" x-html="window.__obsIcon(ot.icon)"></span>
+                  <span class="text-[13px] font-medium text-ink-700 leading-tight" x-text="ot.name"></span>
+                </button>
+              </template>
+            </div>
+
+            <template x-if="moreObsGroups.length">
+              <div>
+                <button @click="moreObs=!moreObs" class="w-full mt-3 py-1.5 text-[13px] font-medium text-ink-500 flex items-center justify-center gap-1 active:text-ink-700">
+                  <span x-text="moreObs ? 'Fewer observations' : 'More observations'"></span>
+                  <span class="inline-flex transition-transform" :class="moreObs && 'rotate-180'">${icon('chevron-down', 'w-4 h-4')}</span>
+                </button>
+                <div x-show="moreObs" x-cloak class="space-y-4 mt-1">
+                  <template x-for="grp in moreObsGroups" :key="grp.g">
+                    <div>
+                      <p class="section-title mb-2" x-text="grp.g"></p>
+                      <div class="grid grid-cols-3 gap-2">
+                        <template x-for="ot in grp.items" :key="ot.id">
+                          <button @click="openObs(ot)" class="rounded-2xl bg-white ring-1 ring-ink-100 p-2.5 min-h-[64px] flex flex-col items-center justify-center gap-1.5 text-center active:bg-ink-50">
+                            <span class="w-8 h-8 rounded-lg bg-ink-50 text-ink-500 grid place-items-center" x-html="window.__obsIcon(ot.icon)"></span>
+                            <span class="text-[11px] font-medium text-ink-600 leading-tight" x-text="ot.name"></span>
+                          </button>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- 3 · medical emergency — pinned here so it is ALWAYS at a fixed,
+               reachable position, never pushed below a variable-length list -->
+          <div class="rounded-xl ring-1 ring-danger-100 bg-danger-50 p-3.5">
+            <button @click="sheet='protocolPick'" class="btn btn-danger btn-md w-full">${icon('shield', 'w-4 h-4')}Medical emergency — launch protocol</button>
+            <p class="text-[13px] text-danger-600 mt-2 text-center">For collapse, choking or acute deterioration.</p>
+          </div>
+
+          <!-- 4 · recorded this visit — abnormal-first, value as the hero -->
+          <div x-show="observations.length">
+            <p class="section-title mb-2.5">Recorded this visit (<span x-text="observations.length"></span>)</p>
+            <div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">
+              <template x-for="o in sortedObs" :key="o.id">
+                <div class="p-3.5 flex items-center gap-3" :class="o.flag==='abnormal' && 'bg-danger-50/50'">
+                  <span class="w-9 h-9 rounded-lg grid place-items-center shrink-0" :class="o.flag==='abnormal' ? 'bg-danger-100 text-danger-700' : 'bg-ink-100 text-ink-500'" x-html="window.__obsIcon(o.icon)"></span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[13px] font-medium text-ink-600" x-text="o.typeName"></p>
+                    <p class="text-[15px] font-bold leading-tight" :class="o.flag==='abnormal' ? 'text-danger-700' : 'text-ink-900'" x-text="obsSummary(o)"></p>
+                    <p x-show="o.flag==='abnormal' && normalRange(o)" x-cloak class="text-[12px] text-danger-500 mt-0.5" x-text="normalRange(o)"></p>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <p class="text-[12px] text-ink-400" x-text="o.at"></p>
+                    <template x-if="o.flag==='abnormal'"><p class="text-[11px] font-semibold text-danger-600 mt-0.5" x-text="o.protocolId ? 'Protocol run' : 'Office alerted'"></p></template>
+                    <template x-if="o.flag!=='abnormal'"><p class="text-[11px] text-success-600 mt-0.5">Normal</p></template>
+                  </div>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
 
