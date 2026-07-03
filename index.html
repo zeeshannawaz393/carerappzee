@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Care Task Template Library</title>
+    <meta name="description" content="Enterprise care task template library — governed templates, task packs, service-user plans and visit task instances." />
+
+    <!-- App typeface: shipped explicitly so it renders the same on every device
+         (previously the CSS asked for Inter but never loaded it → fell back to
+         the system font). Swap the family here + --font-sans in style.css. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body class="h-full bg-canvas text-ink-900 antialiased">
+    <div id="app" class="h-full"></div>
+    <div id="overlay-root"></div>
+    <div id="toast-root" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
