@@ -1,4 +1,5 @@
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { page } from './_layout.js'
 import { icon } from '../icons.js'
 import { pageHeader, statCard, btn, badge, sectionCard } from '../components/ui.js'
@@ -28,7 +29,7 @@ export function renderGovernance() {
           <div class="min-w-0 flex-1">
             <p class="text-sm font-semibold text-ink-900">${nameHtml}</p>
             <p class="text-xs text-ink-500 mt-0.5">${esc(q.category)} · ${esc(q.type)}</p>
-            <p class="text-xs text-ink-400 mt-1">Submitted by ${esc(q.submittedBy)} · ${esc(q.submittedAt)}</p>
+            <p class="text-xs text-ink-400 mt-1">Submitted by ${esc(q.submittedBy)} · ${esc(fmtDMY(q.submittedAt))}</p>
           </div>
           <div class="flex items-center gap-2 shrink-0">
             ${stageBadge}
@@ -111,7 +112,7 @@ export function renderGovernance() {
     ${map(templateAudit, (a) => html`<li class="ml-5">
       <span class="absolute -left-[7px] w-3 h-3 rounded-full bg-primary-400 ring-4 ring-white"></span>
       <p class="text-sm text-ink-800"><span class="font-semibold">${esc(a.action)}</span> — ${esc(a.name)}</p>
-      <p class="text-xs text-ink-400 mt-0.5">${esc(a.by)} · ${esc(a.role)} · ${esc(a.at)}</p>
+      <p class="text-xs text-ink-400 mt-0.5">${esc(a.by)} · ${esc(a.role)} · ${esc(fmtDMY(a.at))}</p>
       ${a.reason ? `<p class="text-xs text-ink-500 mt-0.5">${esc(a.reason)}</p>` : ''}
     </li>`)}
   </ol>`

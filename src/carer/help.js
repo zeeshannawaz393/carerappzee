@@ -48,7 +48,7 @@ export function renderHelp() {
       <div class="card p-4">
         <div class="flex items-center gap-2.5 mb-3">
           <span class="w-9 h-9 rounded-lg bg-teal-50 text-teal-600 grid place-items-center">${icon('bell', 'w-4.5 h-4.5')}</span>
-          <div><p class="text-sm font-semibold text-ink-900">Contact support</p><p class="text-xs text-ink-400">Office hours 8am–6pm · on-call 24/7</p></div>
+          <div><p class="text-sm font-semibold text-ink-900">Contact support</p><p class="text-xs text-ink-400">Office hours 08:00–18:00 · on-call 24/7</p></div>
         </div>
         <div class="grid grid-cols-2 gap-2.5">
           <button onclick="window.__notify('Calling support…','info')" class="btn btn-secondary btn-md">${icon('bell', 'w-4 h-4')}Call</button>

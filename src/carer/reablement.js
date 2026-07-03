@@ -1,5 +1,6 @@
 /** §16a — reablement / outcomes-based care: time-limited, outcome-focused goals. */
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { emptyMobile } from './states.js'
@@ -38,7 +39,7 @@ export function renderReablement({ id }) {
     ${flowHeader({ title: 'Reablement goals', subtitle: esc(su.name), back: `#/carer/clients/${id}` })}
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <div class="card p-4">
-        <div class="flex items-center gap-2.5 mb-2"><span class="w-9 h-9 rounded-lg bg-primary-50 text-primary-600 grid place-items-center">${icon('activity', 'w-4.5 h-4.5')}</span><div class="min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(pkg.package)}</p><p class="text-xs text-ink-400">Started ${esc(pkg.started)} · review ${esc(pkg.review)}</p></div></div>
+        <div class="flex items-center gap-2.5 mb-2"><span class="w-9 h-9 rounded-lg bg-primary-50 text-primary-600 grid place-items-center">${icon('activity', 'w-4.5 h-4.5')}</span><div class="min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(pkg.package)}</p><p class="text-xs text-ink-400">Started ${esc(fmtDMY(pkg.started))} · review ${esc(fmtDMY(pkg.review))}</p></div></div>
         <div class="rounded-lg bg-warning-50 ring-1 ring-warning-100 p-2.5 text-[13px] text-warning-800 flex items-start gap-2">${icon('info', 'w-4 h-4 shrink-0 mt-0.5')}<span>Reablement is <b>time-limited and outcome-focused</b> — encourage independence, don't do-for.</span></div>
       </div>
 

@@ -73,7 +73,7 @@ export function renderToday() {
   const header = html`<div class="px-5 pt-9 pb-1 flex items-center justify-between gap-3">
     <div class="min-w-0">
       <p class="text-xs font-medium uppercase tracking-wide text-ink-400">Good morning</p>
-      <h1 class="text-lg font-semibold text-ink-900 leading-tight truncate">${esc(carer.name)} · <span class="font-normal text-ink-500">Tue 30 Jun</span></h1>
+      <h1 class="text-lg font-semibold text-ink-900 leading-tight truncate">${esc(carer.name)} · <span class="font-normal text-ink-500">Tue 30/06/2026</span></h1>
     </div>
     <div class="flex items-center gap-2 shrink-0">
       ${syncChip(queued)}
@@ -200,7 +200,7 @@ export function renderShiftSummary() {
   const pay = (worked / 60) * 12.5 + miles * 0.45
 
   const inner = html`
-    ${flowHeader({ title: 'End of shift', subtitle: 'Tue 30 Jun', back: '#/carer' })}
+    ${flowHeader({ title: 'End of shift', subtitle: 'Tue 30/06/2026', back: '#/carer' })}
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <div class="grid grid-cols-2 gap-3">
         <div class="card p-3 text-center"><p class="text-2xl font-bold text-ink-900">${done}/${rows.length}</p><p class="text-xs text-ink-400">Visits completed</p></div>

@@ -2,6 +2,7 @@
  * E9 adds the cash-safety gate (§26/§32 AC-26.7): physical opening/closing count,
  * offline-spend limit, high-value approval, and a stale-balance block. */
 import { html, esc } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { emptyMobile } from './states.js'
@@ -17,7 +18,7 @@ export function renderExpenses() {
     { what: 'Cash float received', amount: 40.00, at: '07:30', receipt: false },
   ]
   const inner = html`
-    ${flowHeader({ title: 'Client money & expenses', subtitle: 'Mary Adams · Tue 30 Jun', back: '#/carer/me' })}
+    ${flowHeader({ title: 'Client money & expenses', subtitle: 'Mary Adams · Tue 30/06/2026', back: '#/carer/me' })}
     <div class="flex-1 overflow-y-auto p-4 space-y-4"
       x-data="{
         rows: ${esc(JSON.stringify(seed))},
@@ -195,7 +196,7 @@ export function renderPay() {
 
       <div class="card p-4 flex items-center gap-3">
         <span class="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 grid place-items-center shrink-0">${icon('calendar', 'w-5 h-5')}</span>
-        <div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">Next payment · ${esc(PAY_PERIOD.payday)}</p><p class="text-xs text-ink-500">Your salary is paid automatically to your bank each month — nothing to request.</p></div>
+        <div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">Next payment · ${esc(fmtDMY(PAY_PERIOD.payday))}</p><p class="text-xs text-ink-500">Your salary is paid automatically to your bank each month — nothing to request.</p></div>
       </div>
 
       <!-- holiday + pension (financial wellbeing — most care apps hide these) -->
@@ -225,7 +226,7 @@ export function renderPay() {
   const payslipsTab = html`
     <div x-show="tab==='payslips'" x-cloak class="space-y-4">
       <div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">
-        ${PAYSLIPS.map((p) => { const t = payslipTotals(p); return `<a href="#/carer/me/payslip/${p.id}" class="block p-4 flex items-center gap-3 active:bg-ink-50"><span class="w-9 h-9 rounded-xl bg-ink-100 text-ink-600 grid place-items-center shrink-0">${icon('file-check', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(p.month)}</p><p class="text-xs text-ink-500">Paid ${esc(p.paidDate)}</p></div><div class="text-right shrink-0 flex items-center gap-2"><p class="text-sm font-bold text-ink-900">${gbp(t.net)}</p>${icon('chevron-right', 'w-4 h-4 text-ink-300')}</div></a>` }).join('')}
+        ${PAYSLIPS.map((p) => { const t = payslipTotals(p); return `<a href="#/carer/me/payslip/${p.id}" class="block p-4 flex items-center gap-3 active:bg-ink-50"><span class="w-9 h-9 rounded-xl bg-ink-100 text-ink-600 grid place-items-center shrink-0">${icon('file-check', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(p.month)}</p><p class="text-xs text-ink-500">Paid ${esc(fmtDMY(p.paidDate))}</p></div><div class="text-right shrink-0 flex items-center gap-2"><p class="text-sm font-bold text-ink-900">${gbp(t.net)}</p>${icon('chevron-right', 'w-4 h-4 text-ink-300')}</div></a>` }).join('')}
       </div>
       <p class="text-xs text-ink-400 text-center">Each payslip shows gross pay, tax, National Insurance &amp; pension. Tap for the full breakdown.</p>
     </div>`
@@ -282,7 +283,7 @@ export function renderPayslip({ id }) {
   const t = payslipTotals(p)
   const line = (label, detail, amount, opts = {}) => `<div class="flex items-center gap-3 p-4"><div class="flex-1 min-w-0"><p class="text-sm ${opts.bold ? 'font-bold' : 'font-semibold'} text-ink-900">${esc(label)}</p>${detail ? `<p class="text-xs text-ink-500">${esc(detail)}</p>` : ''}</div><span class="text-sm ${opts.bold ? 'font-bold' : 'font-semibold'} ${opts.tone || 'text-ink-900'} shrink-0 tabular-nums">${opts.minus ? '−' : ''}${gbp(amount)}</span></div>`
   const inner = html`
-    ${flowHeader({ title: p.month, subtitle: `Payslip · paid ${esc(p.paidDate)}`, back: '#/carer/me/pay', right: `<button onclick="window.__notify('Payslip PDF downloaded','success')" class="text-sm font-semibold text-primary-600">Download</button>` })}
+    ${flowHeader({ title: p.month, subtitle: `Payslip · paid ${esc(fmtDMY(p.paidDate))}`, back: '#/carer/me/pay', right: `<button onclick="window.__notify('Payslip PDF downloaded','success')" class="text-sm font-semibold text-primary-600">Download</button>` })}
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <div class="card p-5 text-center">
         <p class="section-title">Net pay</p>

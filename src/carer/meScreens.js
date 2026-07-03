@@ -1,5 +1,6 @@
 /** P4 — Me & safety: timesheet, availability, training, settings, lone-worker. */
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { ROTA, getRota, WORKING_PATTERN, patternWeek, nextWeekIso, contractedWeeklyHours, DEMO_TODAY, TRAINING_RECORDS, expiryStatus } from '../data/carer.js'
@@ -14,7 +15,7 @@ export function renderTimesheet() {
   const rows = ROTA.map((r) => ({ rota: r, su: getServiceUser(r.suId), clock: carerStore.clock(r.id) })).filter((x) => x.clock.in)
   const totalMin = rows.reduce((s, x) => s + (x.clock.out ? mins(x.clock.out) - mins(x.clock.in) : 0), 0)
   const inner = html`
-    ${flowHeader({ title: 'Timesheet & mileage', subtitle: 'Tue 30 Jun', back: '#/carer/me' })}
+    ${flowHeader({ title: 'Timesheet & mileage', subtitle: 'Tue 30/06/2026', back: '#/carer/me' })}
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <div class="grid grid-cols-3 gap-2.5">
         <div class="card p-3 text-center"><p class="text-xl font-bold text-ink-900">${rows.length}</p><p class="text-xs text-ink-500">Visits</p></div>
@@ -39,92 +40,116 @@ export function renderTimesheet() {
 /* ----------------------------------------------------------- Availability */
 /** §12 — availability & shifts driven by the rolling WORKING_PATTERN (CM2000-style):
  *  shows the current cycle-week, this-week's projected rota, and a next-week preview. */
+/* Availability editor — a repeating 2-week pattern the carer sets and the office
+   confirms. Each day is Fully / Partial / None; Fully & Partial carry a time window. */
+const AVAIL_TIME_OPTS = (() => {
+  let s = ''
+  for (let h = 0; h < 24; h++) for (const m of ['00', '30']) {
+    const v = `${String(h).padStart(2, '0')}:${m}`
+    s += `<option value="${v}">${v}</option>`
+  }
+  return s
+})()
+
+/* Seed pattern (24-hour times). Reactive Alpine state clones this per session. */
+const AVAIL_INIT = {
+  1: [
+    { day: 'Mon', mode: 'fully', from: '07:00', to: '14:00' },
+    { day: 'Tue', mode: 'fully', from: '07:00', to: '14:00' },
+    { day: 'Wed', mode: 'partial', from: '13:00', to: '18:00' },
+    { day: 'Thu', mode: 'fully', from: '08:00', to: '13:30' },
+    { day: 'Fri', mode: 'partial', from: '09:00', to: '13:00' },
+    { day: 'Sat', mode: 'none', from: '09:00', to: '17:00' },
+    { day: 'Sun', mode: 'none', from: '09:00', to: '17:00' },
+  ],
+  2: [
+    { day: 'Mon', mode: 'partial', from: '09:00', to: '13:00' },
+    { day: 'Tue', mode: 'fully', from: '07:00', to: '14:00' },
+    { day: 'Wed', mode: 'fully', from: '16:30', to: '21:30' },
+    { day: 'Thu', mode: 'none', from: '09:00', to: '17:00' },
+    { day: 'Fri', mode: 'partial', from: '08:00', to: '13:30' },
+    { day: 'Sat', mode: 'fully', from: '08:00', to: '14:00' },
+    { day: 'Sun', mode: 'fully', from: '08:00', to: '14:00' },
+  ],
+}
+/* Single-quoted so it can live inside a double-quoted x-data attribute. */
+const AVAIL_INIT_LITERAL = JSON.stringify(AVAIL_INIT).replace(/"/g, "'")
+
+/* One Fully/Partial/None toggle button (evaluated inside the x-for `d` scope). */
+const availModeBtn = (mode, label, onCls) => html`<button type="button" @click="d.mode='${mode}'" :class="d.mode==='${mode}' ? '${onCls}' : 'bg-white text-ink-600 ring-ink-200'" class="px-3 h-8 rounded-lg text-[13px] font-semibold ring-1 ring-inset transition-colors active:scale-[.97]">${label}</button>`
+
+/* A 24-hour time picker bound to `model` (e.g. 'd.from'). */
+const availTimeSelect = (model) => html`<div class="relative flex-1 min-w-0">
+  <select x-model="${model}" class="field field-md appearance-none pr-8 font-medium tabular-nums">${AVAIL_TIME_OPTS}</select>
+  <span class="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-ink-400">${icon('clock', 'w-4 h-4')}</span>
+</div>`
+
+/** §12 — availability & shifts: the carer's repeating 2-week availability pattern.
+ *  Each day is Fully / Partial / None; Fully & Partial carry a 24-hour time window. */
 export function renderAvailability() {
-  const thisWeek = patternWeek(WORKING_PATTERN, DEMO_TODAY)
-  const nextWeek = patternWeek(WORKING_PATTERN, nextWeekIso(DEMO_TODAY))
-  const contracted = contractedWeeklyHours(WORKING_PATTERN)
-
-  const slotTone = (k) => k === 'shift' ? 'bg-primary-50 text-primary-700 ring-primary-100'
-    : k === 'available' ? 'bg-success-50 text-success-700 ring-success-100'
-      : 'bg-ink-100 text-ink-500 ring-ink-200'
-
-  const dayRow = (d) => html`<div class="flex items-center gap-3 py-2 ${d.isToday ? 'bg-primary-50 rounded-lg px-2 -mx-2' : ''}">
-    <div class="w-10 shrink-0 text-center">
-      <p class="text-[10px] font-medium uppercase tracking-wide text-ink-400">${d.dow}</p>
-      <p class="text-sm font-bold text-ink-800">${d.dom}</p>
-    </div>
-    <div class="flex-1 min-w-0">
-      ${d.slot.kind === 'shift'
-        ? html`<p class="text-[13px] font-semibold text-ink-900 truncate">${esc(d.slot.run)}</p><p class="text-[11px] text-ink-400">${esc(d.slot.times)}</p>`
-        : `<p class="text-[13px] text-ink-500">${d.slot.kind === 'available' ? 'Available for shifts' : 'Rest day'}</p>`}
-    </div>
-    ${d.isToday ? '<span class="badge bg-primary-600 text-white ring-primary-600 text-[10px]">Today</span>' : ''}
-    <span class="badge ${slotTone(d.slot.kind)} text-[10px]">${d.slot.kind === 'shift' ? d.slot.hours + 'h' : d.slot.kind === 'available' ? 'Avail' : 'Off'}</span>
-  </div>`
-
-  const miniDay = (d) => html`<div class="flex flex-col items-center gap-1">
-    <span class="text-[10px] text-ink-400">${d.dow.slice(0, 1)}</span>
-    <span class="w-7 h-7 rounded-lg grid place-items-center text-[10px] font-semibold ${slotTone(d.slot.kind)}">${d.slot.kind === 'shift' ? d.slot.hours : d.slot.kind === 'available' ? 'A' : '·'}</span>
-  </div>`
-
   const inner = html`
     ${flowHeader({ title: 'Availability & shifts', back: '#/carer/me' })}
-    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div class="flex-1 overflow-y-auto p-4 space-y-4" x-data="{ week: 1, weeks: ${AVAIL_INIT_LITERAL} }">
 
-      <!-- rolling pattern banner -->
+      <!-- pattern banner -->
       <div class="card p-4 bg-primary-600 ring-primary-600 text-white">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-[11px] font-medium uppercase tracking-wide text-white/70">Your working pattern</p>
-            <p class="text-lg font-bold leading-tight">Week ${thisWeek.cycleWeek} of ${thisWeek.cycleWeeks}</p>
+            <p class="text-[11px] font-medium uppercase tracking-wide text-white/70">Your availability pattern</p>
+            <p class="text-lg font-bold leading-tight">Repeating 2-week pattern</p>
           </div>
           <span class="w-11 h-11 rounded-xl bg-white/15 grid place-items-center">${icon('calendar', 'w-5 h-5')}</span>
         </div>
-        <p class="text-[12px] text-white/80 mt-1">A ${thisWeek.cycleWeeks}-week rolling rota that repeats automatically. The office confirms any change.</p>
+        <p class="text-[12px] text-white/80 mt-1">Set when you can work across a repeating two-week pattern. The office confirms any change.</p>
       </div>
 
-      <!-- this week -->
-      <div class="card p-4">
-        <div class="flex items-center justify-between mb-1">
-          <p class="text-sm font-semibold text-ink-900">This week</p>
-          <span class="text-[11px] text-ink-400">w/c ${thisWeek.wcLabel}</span>
-        </div>
-        <div class="divide-y divide-ink-100">${map(thisWeek.days, dayRow)}</div>
-        <div class="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
-          <span class="text-[12px] text-ink-500">Rostered this week</span>
-          <span class="text-[13px] font-semibold text-ink-800">${thisWeek.shiftHours}h · contracted ~${contracted}h/wk</span>
-        </div>
+      <!-- week tabs -->
+      <div class="grid grid-cols-2 gap-1 p-1 bg-ink-100 rounded-xl">
+        ${[1, 2].map((w) => html`<button type="button" @click="week=${w}" :class="week===${w} ? 'bg-primary-600 text-white shadow-sm' : 'text-ink-600'" class="h-9 rounded-lg text-sm font-semibold transition-colors">Week ${w}</button>`).join('')}
       </div>
 
-      <!-- next week preview -->
-      <div class="card p-4">
-        <div class="flex items-center justify-between mb-2">
-          <p class="text-sm font-semibold text-ink-900">Next week · <span class="text-ink-400 font-normal">Week ${nextWeek.cycleWeek} of ${nextWeek.cycleWeeks}</span></p>
-          <span class="text-[11px] text-ink-400">w/c ${nextWeek.wcLabel}</span>
-        </div>
-        <div class="flex items-center justify-between">${map(nextWeek.days, miniDay)}</div>
-        <p class="text-[11px] text-ink-400 mt-2">Projected from your rolling pattern · numbers = shift hours · A = available · · = rest.</p>
+      <!-- legend -->
+      <div class="flex items-center justify-center gap-4 text-[11px] text-ink-500">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-success-500"></span>Fully</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-warning-500"></span>Partial</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-ink-500"></span>None</span>
       </div>
 
-      <!-- open shifts -->
-      <div class="card p-4">
-        <p class="text-sm font-semibold text-ink-900 mb-2">Open shifts</p>
-        <div class="rounded-lg ring-1 ring-ink-200 p-3 flex items-center gap-3"><span class="w-9 h-9 rounded-xl bg-warning-50 text-warning-600 grid place-items-center">${icon('calendar', 'w-4 h-4')}</span><div class="flex-1"><p class="text-sm font-semibold text-ink-900">Sat — Doris Finch round</p><p class="text-xs text-ink-500">3 visits · 08:00–20:30 · outside your pattern</p></div><button onclick="window.__notify('Shift request sent to office','success')" class="btn btn-secondary btn-sm">Request</button></div>
+      <!-- day editor -->
+      <div class="space-y-3">
+        <template x-for="(d, i) in weeks[week]" :key="week + '-' + i">
+          <div class="card p-4">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base font-bold text-ink-900" x-text="d.day"></span>
+              <div class="inline-flex gap-1">
+                ${availModeBtn('fully', 'Fully', 'bg-success-600 text-white ring-success-600')}
+                ${availModeBtn('partial', 'Partial', 'bg-warning-500 text-white ring-warning-500')}
+                ${availModeBtn('none', 'None', 'bg-ink-600 text-white ring-ink-600')}
+              </div>
+            </div>
+            <div x-show="d.mode !== 'none'" x-cloak class="mt-3 pt-3 border-t border-ink-100 flex items-center gap-2">
+              <span class="text-xs text-ink-400 shrink-0">Available</span>
+              ${availTimeSelect('d.from')}
+              <span class="text-ink-400">–</span>
+              ${availTimeSelect('d.to')}
+            </div>
+            <p x-show="d.mode === 'none'" x-cloak class="mt-3 pt-3 border-t border-ink-100 text-xs text-ink-400">Not available this day.</p>
+          </div>
+        </template>
       </div>
 
-      <button onclick="window.__notify('Leave request submitted','success')" class="btn btn-secondary btn-md w-full">${icon('calendar', 'w-4 h-4')}Request leave</button>
-      <p class="text-[11px] text-ink-400 text-center">One-off changes and leave don't alter your rolling pattern — the office makes pattern changes from a future date.</p>
+      <button type="button" onclick="window.__notify('Availability sent to the office for confirmation','success')" class="btn btn-primary btn-md w-full">${icon('check-circle', 'w-4 h-4')}Save availability</button>
+      <p class="text-[11px] text-ink-400 text-center">Your two-week pattern repeats automatically. One-off changes and leave don't alter it — the office confirms pattern changes from a future date.</p>
     </div>`
   return mobileFlow(inner)
 }
 
 /* ------------------------------------------------------------- Training */
-const TRAIN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const trainBadge = { valid: 'bg-success-50 text-success-700 ring-success-100', expiring: 'bg-warning-50 text-warning-700 ring-warning-100', expired: 'bg-danger-50 text-danger-700 ring-danger-100' }
 const trainDot = { valid: 'bg-success-50 text-success-600', expiring: 'bg-warning-50 text-warning-600', expired: 'bg-danger-50 text-danger-600' }
 const trainIco = { valid: 'check-circle', expiring: 'clock', expired: 'x-circle' }
 const trainLabel = { valid: 'Valid', expiring: 'Expiring', expired: 'Expired' }
-const fmtDate = (iso) => { const d = new Date(iso + 'T00:00:00Z'); return `${d.getUTCDate()} ${TRAIN_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}` }
+const fmtDate = (iso) => fmtDMY(iso)
 
 /** §28 — training records with expiry computed from the demo clock; links to the
  *  learning centre, skills matrix and staff documents. */
@@ -153,7 +178,7 @@ export function renderTraining() {
         <div class="card divide-y divide-ink-100">
           ${map(recs, (r) => html`<div class="p-4 flex items-center gap-3">
             <span class="w-9 h-9 rounded-xl grid place-items-center ${trainDot[r.st]}">${icon(trainIco[r.st], 'w-4.5 h-4.5')}</span>
-            <div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(r.name)}</p><p class="text-xs text-ink-500">${r.renewed ? 'Renewed in learning centre · ' : `Issued ${esc(r.issued)} · `}expires ${fmtDate(r.expiry)}</p></div>
+            <div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(r.name)}</p><p class="text-xs text-ink-500">${r.renewed ? 'Renewed in learning centre · ' : `Issued ${esc(fmtDMY(r.issued))} · `}expires ${fmtDate(r.expiry)}</p></div>
             <span class="badge ${trainBadge[r.st]}">${trainLabel[r.st]}</span>
           </div>`)}
         </div>

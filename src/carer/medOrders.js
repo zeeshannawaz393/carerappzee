@@ -4,6 +4,7 @@
  * version, and any open reconciliation that BLOCKS administration until resolved.
  */
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { emptyMobile } from './states.js'
@@ -47,7 +48,7 @@ function orderCard(suId, o) {
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap"><p class="text-sm font-semibold text-ink-900">${esc(o.name)}</p><span class="badge ${TONE[curMeta.tone]}">${esc(cur.state)}</span>${o.covert ? '<span class="badge bg-ink-100 text-ink-600 ring-ink-200">Covert (MCA)</span>' : ''}</div>
         <p class="text-[13px] text-ink-700 mt-0.5"><b>${esc(cur.dose)}</b> · ${esc(cur.freq)} · ${esc(o.route)}</p>
-        <p class="text-[11px] text-ink-400 mt-0.5">Effective ${esc(cur.effectiveFrom)} · ${esc(cur.prescriber)} · ${esc(cur.source)} · review ${esc(cur.review)}</p>
+        <p class="text-[11px] text-ink-400 mt-0.5">Effective ${esc(fmtDMY(cur.effectiveFrom))} · ${esc(cur.prescriber)} · ${esc(cur.source)} · review ${esc(fmtDMY(cur.review))}</p>
         ${cur.changeNote ? `<div class="mt-1.5 rounded-lg bg-info-50 ring-1 ring-info-100 p-2 text-[12px] text-info-800">${icon('info', 'w-3.5 h-3.5')} ${esc(cur.changeNote)}</div>` : ''}
       </div>
     </div>
@@ -55,7 +56,7 @@ function orderCard(suId, o) {
     ${o.recon ? reconCard(suId, o) : ''}
     <details class="mt-2 group"><summary class="text-[12px] font-medium text-primary-600 cursor-pointer list-none flex items-center gap-1">${icon('clock', 'w-3.5 h-3.5')}Version history (${o.versions.length})</summary>
       <ol class="mt-2 space-y-1.5 border-l-2 border-ink-100 pl-3">
-        ${map([...o.versions].reverse(), (v) => html`<li class="text-[12px]"><span class="badge ${TONE[(ORDER_STATES[v.state] || ORDER_STATES.Active).tone]} mr-1">v${v.v} · ${esc(v.state)}</span><span class="text-ink-700">${esc(v.dose)} ${esc(v.freq)}</span><span class="block text-[11px] text-ink-400">from ${esc(v.effectiveFrom)} · ${esc(v.prescriber)}</span></li>`)}
+        ${map([...o.versions].reverse(), (v) => html`<li class="text-[12px]"><span class="badge ${TONE[(ORDER_STATES[v.state] || ORDER_STATES.Active).tone]} mr-1">v${v.v} · ${esc(v.state)}</span><span class="text-ink-700">${esc(v.dose)} ${esc(v.freq)}</span><span class="block text-[11px] text-ink-400">from ${esc(fmtDMY(v.effectiveFrom))} · ${esc(v.prescriber)}</span></li>`)}
       </ol>
     </details>
   </div>`
