@@ -254,16 +254,192 @@ function courseModal(c) {
   </div>`
 }
 
+/* --------------------------------------------- shared assessment rendering */
+
+/** Alpine score expression + pass threshold for a quiz array. */
+function scoreParts(quiz) {
+  const total = quiz.length
+  const passNeeded = Math.ceil(total * PASS_RATIO)
+  const scoreExpr = quiz.map((q, i) => {
+    if (q.t === 'multi') {
+      const correct = [...(q.answers || [])].sort((a, b) => a - b).join(',')
+      return `((answers[${i}]||[]).slice().sort((a,b)=>a-b).join(',')==='${correct}'?1:0)`
+    }
+    return `(answers[${i}]===${q.answer}?1:0)`
+  }).join('+')
+  return { total, passNeeded, scoreExpr }
+}
+
+/** The question list for an assessment (single + multi, with correct-answer reveal). */
+function assessmentQuestions(quiz) {
+  return map(quiz, (q, qi) => {
+    const isMulti = q.t === 'multi'
+    const correctStr = isMulti ? [...(q.answers || [])].sort((a, b) => a - b).join(',') : ''
+    const correctTexts = isMulti ? (q.answers || []).map((i) => q.options[i]).join(', ') : ''
+    return html`<div>
+      <p class="text-sm font-semibold text-ink-900 mb-2"><span class="text-ink-400">${qi + 1}.</span> ${esc(q.q)}</p>
+      ${isMulti
+        ? html`<p class="text-[11px] text-ink-400 mb-1.5">Select all that apply</p><div class="space-y-2">${map(q.options, (o, oi) => html`<button type="button" @click="answers[${qi}]=((answers[${qi}]||[]).includes(${oi}) ? answers[${qi}].filter(x=>x!==${oi}) : [...(answers[${qi}]||[]),${oi}]);submitted=false" :class="submitted ? (${q.answers.includes(oi)} ? 'ring-success-500 bg-success-50 text-success-800' : ((answers[${qi}]||[]).includes(${oi}) ? 'ring-danger-400 bg-danger-50 text-danger-700' : 'ring-ink-200 text-ink-400')) : ((answers[${qi}]||[]).includes(${oi}) ? 'ring-primary-500 bg-primary-50 text-primary-800' : 'ring-ink-200 text-ink-700')" class="w-full text-left rounded-xl ring-1 px-3 py-2.5 text-[13px] font-medium flex items-center gap-2"><span class="w-4 h-4 rounded ring-1 shrink-0 grid place-items-center" :class="(answers[${qi}]||[]).includes(${oi}) ? 'bg-primary-600 ring-primary-600 text-white' : 'ring-ink-300'"><span x-show="(answers[${qi}]||[]).includes(${oi})" x-cloak>${icon('check', 'w-3 h-3')}</span></span><span>${esc(o)}</span></button>`)}</div>
+            <p x-show="submitted && (answers[${qi}]||[]).slice().sort((a,b)=>a-b).join(',')!=='${correctStr}'" x-cloak class="mt-2 text-[12px] text-success-700 flex items-start gap-1.5">${icon('check-circle', 'w-3.5 h-3.5 mt-0.5 shrink-0')}<span>Correct answers: <strong>${esc(correctTexts)}</strong></span></p>`
+        : html`<div class="space-y-2">${map(q.options, (o, oi) => html`<button type="button" @click="answers[${qi}]=${oi};submitted=false" :class="submitted ? (${oi}===${q.answer} ? 'ring-success-500 bg-success-50 text-success-800' : (answers[${qi}]===${oi} ? 'ring-danger-400 bg-danger-50 text-danger-700' : 'ring-ink-200 text-ink-400')) : (answers[${qi}]===${oi} ? 'ring-primary-500 bg-primary-50 text-primary-800' : 'ring-ink-200 text-ink-700')" class="w-full text-left rounded-xl ring-1 px-3 py-2.5 text-[13px] font-medium">${esc(o)}</button>`)}</div>
+            <p x-show="submitted && answers[${qi}]!==${q.answer}" x-cloak class="mt-2 text-[12px] text-success-700 flex items-start gap-1.5">${icon('check-circle', 'w-3.5 h-3.5 mt-0.5 shrink-0')}<span>Correct answer: <strong>${esc(q.options[q.answer])}</strong></span></p>`}
+    </div>`
+  })
+}
+
+/* ----------------------------------------- §28 enterprise multi-module player */
+
+/** One module's knowledge check (formative — reveals feedback, does not gate). */
+function moduleCheck(c, ct, i) {
+  const m = ct.modules[i]
+  const chk = m.check
+  const last = i >= ct.modules.length - 1
+  const completeLabel = last ? 'Finish modules' : 'Complete module & continue'
+  // On completing a module: tick it, reset check state, advance + bookmark.
+  const advance = last
+    ? `view='overview';window.__courseProgress('${c.id}',0,${ct.modules.length})`
+    : `mod=${i + 1};mscreen=0;view='overview';window.__courseProgress('${c.id}',0,${i + 1})`
+  const onComplete = `if(!done.includes(${i}))done.push(${i});mpick=null;mpicks=[];mchecked=false;mcorrect=false;${advance}`
+  const isMulti = chk.t === 'multi'
+  const options = isMulti
+    ? html`<div class="space-y-2">${map(chk.options, (o, oi) => html`<button type="button" @click="mpicks=(mpicks.includes(${oi})?mpicks.filter(x=>x!==${oi}):[...mpicks,${oi}]);mchecked=false" :class="mchecked ? (${chk.answers.includes(oi)} ? 'ring-success-500 bg-success-50 text-success-800' : (mpicks.includes(${oi}) ? 'ring-danger-400 bg-danger-50 text-danger-700' : 'ring-ink-200 text-ink-400')) : (mpicks.includes(${oi}) ? 'ring-primary-500 bg-primary-50 text-primary-800' : 'ring-ink-200 text-ink-700')" class="w-full text-left rounded-xl ring-1 px-3 py-2.5 text-[13px] font-medium flex items-center gap-2"><span class="w-4 h-4 rounded ring-1 shrink-0 grid place-items-center" :class="mpicks.includes(${oi}) ? 'bg-primary-600 ring-primary-600 text-white' : 'ring-ink-300'"><span x-show="mpicks.includes(${oi})" x-cloak>${icon('check', 'w-3 h-3')}</span></span><span>${esc(o)}</span></button>`)}</div>`
+    : html`<div class="space-y-2">${map(chk.options, (o, oi) => html`<button type="button" @click="mpick=${oi};mchecked=false" :class="mchecked ? (${oi}===${chk.answer} ? 'ring-success-500 bg-success-50 text-success-800' : (mpick===${oi} ? 'ring-danger-400 bg-danger-50 text-danger-700' : 'ring-ink-200 text-ink-400')) : (mpick===${oi} ? 'ring-primary-500 bg-primary-50 text-primary-800' : 'ring-ink-200 text-ink-700')" class="w-full text-left rounded-xl ring-1 px-3 py-2.5 text-[13px] font-medium">${esc(o)}</button>`)}</div>`
+  const checkExpr = isMulti
+    ? `mchecked=true;mcorrect=(mpicks.slice().sort((a,b)=>a-b).join(',')==='${[...(chk.answers || [])].sort((a, b) => a - b).join(',')}')`
+    : `mchecked=true;mcorrect=(mpick===${chk.answer})`
+  const disableExpr = isMulti ? 'mpicks.length===0' : 'mpick===null'
+  const wrongText = isMulti ? `Correct answers: <strong>${esc((chk.answers || []).map((x) => chk.options[x]).join(', '))}</strong>` : `Correct answer: <strong>${esc(chk.options[chk.answer])}</strong>`
+  return html`<div class="rounded-xl ring-1 ring-ink-100 p-3">
+    <p class="text-[11px] font-semibold uppercase tracking-wide text-primary-600 mb-2 flex items-center gap-1">${icon('sparkles', 'w-3.5 h-3.5')}Knowledge check</p>
+    <p class="text-sm font-semibold text-ink-900 mb-2">${esc(chk.q)}</p>
+    ${options}
+    <p x-show="mchecked && mcorrect" x-cloak class="mt-2 text-[12px] text-success-700 flex items-center gap-1.5">${icon('check-circle', 'w-3.5 h-3.5')}Correct</p>
+    <p x-show="mchecked && !mcorrect" x-cloak class="mt-2 text-[12px] text-success-700 flex items-start gap-1.5">${icon('check-circle', 'w-3.5 h-3.5 mt-0.5 shrink-0')}<span>${wrongText}</span></p>
+    <button x-show="!mchecked" @click="${checkExpr}" :disabled="${disableExpr}" :class="${disableExpr} ? 'opacity-50' : ''" class="btn btn-primary btn-md w-full mt-3">Check answer</button>
+    <button x-show="mchecked" x-cloak @click="${onComplete}" class="btn btn-primary btn-md w-full mt-3">${completeLabel} ${icon('chevron-right', 'w-4 h-4')}</button>
+  </div>`
+}
+
+/** One module's screen-by-screen body (blocks paged, then the knowledge check). */
+function moduleView(c, ct, i) {
+  const m = ct.modules[i]
+  const nBlocks = m.blocks.length
+  const nScreens = nBlocks + 1
+  return html`<div x-show="mod===${i}" x-cloak>
+    <div class="flex items-center justify-between mb-1.5">
+      <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">Module ${i + 1} of ${ct.modules.length}</p>
+      <span class="text-[11px] text-ink-400">Screen <span x-text="mscreen+1"></span> of ${nScreens}</span>
+    </div>
+    <p class="text-sm font-semibold text-ink-900 mb-2">${esc(m.title)}</p>
+    <div class="h-1.5 rounded-full bg-ink-100 overflow-hidden mb-3"><div class="h-full rounded-full bg-primary-500 transition-all" :style="'width:'+Math.round((mscreen+1)/${nScreens}*100)+'%'"></div></div>
+    <div class="min-h-[180px]">
+      ${map(m.blocks, (b, j) => html`<div x-show="mscreen===${j}" x-cloak>${renderBlock(b)}</div>`)}
+      <div x-show="mscreen===${nBlocks}" x-cloak>${moduleCheck(c, ct, i)}</div>
+    </div>
+    <div class="flex gap-2 mt-4">
+      <button @click="view='overview'" class="btn btn-secondary btn-md">${icon('list', 'w-4 h-4')}Contents</button>
+      <button x-show="mscreen>0" x-cloak @click="mscreen--" class="btn btn-secondary btn-md flex-1">Back</button>
+      <button x-show="mscreen < ${nBlocks}" @click="mscreen++;window.__courseProgress('${c.id}',mscreen,${i})" class="btn btn-primary btn-md flex-1">Continue ${icon('chevron-right', 'w-4 h-4')}</button>
+    </div>
+  </div>`
+}
+
+/** The enterprise course: contents page → modules (each with a check) → final assessment. */
+function courseModalModular(c, ct) {
+  const nMods = ct.modules.length
+  const quiz = Array.isArray(ct.quiz) ? ct.quiz : [ct.quiz]
+  const { total, passNeeded, scoreExpr } = scoreParts(quiz)
+  const comp = ct.competency || {}
+  return html`<div x-show="modal" x-cloak class="absolute inset-0 z-50 bg-black/40 flex items-end" @click.self="modal=false">
+    <div class="bg-surface rounded-t-2xl w-full max-h-[88%] overflow-y-auto">
+      <div class="sticky top-0 bg-surface px-4 py-3 border-b border-ink-100 flex items-center justify-between">
+        <p class="text-sm font-semibold text-ink-900 truncate">${esc(c.title)}</p>
+        <button @click="modal=false" class="text-ink-400">${icon('x', 'w-5 h-5')}</button>
+      </div>
+      <div class="p-4">
+
+        <!-- CONTENTS / OVERVIEW -->
+        <div x-show="view==='overview'" x-cloak>
+          <div class="mb-3 rounded-xl bg-warning-50 ring-1 ring-warning-100 p-3 text-[12px] text-warning-800 flex items-start gap-2">${icon('info', 'w-4 h-4 shrink-0 mt-0.5')}<span>This is the <strong>knowledge element only</strong>. You must also be <strong>observed and signed off as competent</strong> before you administer medicines unsupervised.</span></div>
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-400 mb-1.5">What you'll learn</p>
+          <ul class="space-y-1.5 mb-4">${map(ct.outcomes || [], (o) => html`<li class="flex items-start gap-2 text-[12px] text-ink-600">${icon('check', 'w-3.5 h-3.5 text-primary-500 mt-0.5 shrink-0')}<span>${esc(o)}</span></li>`)}</ul>
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-400 mb-1.5">${nMods} modules · <span x-text="done.length"></span> complete</p>
+          <div class="rounded-xl ring-1 ring-ink-100 divide-y divide-ink-100 mb-4">
+            ${map(ct.modules, (m, i) => html`<button type="button" @click="mod=${i};mscreen=0;mpick=null;mpicks=[];mchecked=false;view='module'" class="w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-ink-50">
+              <span class="shrink-0" :class="done.includes(${i}) ? 'text-success-600' : 'text-ink-300'"><span x-show="done.includes(${i})" x-cloak>${icon('check-circle', 'w-5 h-5')}</span><span x-show="!done.includes(${i})" x-cloak class="inline-grid place-items-center w-5 h-5 rounded-full ring-1 ring-ink-300 text-[11px] font-semibold text-ink-500">${i + 1}</span></span>
+              <span class="min-w-0 flex-1"><span class="block text-[13px] font-medium text-ink-800 truncate">${esc(m.title)}</span><span class="block text-[11px] text-ink-400">${esc(m.mins)} min</span></span>
+              ${icon('chevron-right', 'w-4 h-4 text-ink-300 shrink-0')}
+            </button>`)}
+          </div>
+          <div class="rounded-xl ring-1 ring-info-100 bg-info-50 p-3 mb-4">
+            <p class="text-[12px] font-semibold text-info-800 flex items-center gap-1.5 mb-1">${icon('user-check', 'w-4 h-4')}Practical competency (the second gate)</p>
+            <p class="text-[12px] text-info-700">After the knowledge modules you must be observed administering medicines by ${esc(comp.observedBy || 'a competent assessor')} and signed off — ${esc(comp.frequency || 'reviewed regularly')}.</p>
+            <button type="button" onclick="location.hash='#/carer/me/skills'" class="btn btn-secondary btn-sm mt-2">${icon('user-check', 'w-3.5 h-3.5')}View my skills sign-off</button>
+          </div>
+          <template x-if="done.length >= ${nMods}">
+            <button @click="answers=answers.map(()=>null);submitted=false;passed=false;score=0;view='assessment'" class="btn btn-primary btn-md w-full">${icon('file-check', 'w-4 h-4')}Take final assessment</button>
+          </template>
+          <template x-if="done.length < ${nMods}">
+            <button @click="mscreen=0;mpick=null;mpicks=[];mchecked=false;view='module'" class="btn btn-primary btn-md w-full"><span x-text="done.length ? 'Resume · Module '+(mod+1) : 'Start course'"></span> ${icon('chevron-right', 'w-4 h-4')}</button>
+          </template>
+        </div>
+
+        <!-- MODULES -->
+        <div x-show="view==='module'" x-cloak>
+          ${map(ct.modules, (m, i) => moduleView(c, ct, i))}
+        </div>
+
+        <!-- FINAL ASSESSMENT -->
+        <div x-show="view==='assessment'" x-cloak>
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">Final assessment · ${total} questions</p>
+            <span class="badge bg-ink-50 text-ink-600 ring-ink-200">Pass mark 80%</span>
+          </div>
+          <div class="space-y-4">${assessmentQuestions(quiz)}</div>
+          <template x-if="submitted">
+            <div class="mt-4">
+              <p class="text-[13px] font-medium text-ink-700">You scored <span x-text="score"></span>/${total} — <span x-text="Math.round(score/${total}*100)"></span>%</p>
+              <p x-show="!passed" x-cloak class="text-[12px] text-danger-600 mt-1 flex items-center gap-1.5">${icon('alert', 'w-3.5 h-3.5')}Not passed — 80% needed. The correct answers are shown in green above.</p>
+            </div>
+          </template>
+          <div class="flex gap-2 mt-4">
+            <button @click="view='overview'" class="btn btn-secondary btn-md flex-1">Back</button>
+            <button x-show="!(submitted && !passed)" @click="score=(${scoreExpr});submitted=true;passed=score>=${passNeeded};passed ? (view='done') : null" :disabled="answers.includes(null)" :class="answers.includes(null) ? 'opacity-50' : ''" class="btn btn-primary btn-md flex-1">Submit assessment</button>
+            <button x-show="submitted && !passed" x-cloak @click="answers=answers.map(()=>null);submitted=false;passed=false" class="btn btn-primary btn-md flex-1">${icon('refresh', 'w-4 h-4')}Retry</button>
+          </div>
+        </div>
+
+        <!-- DONE -->
+        <div x-show="view==='done'" x-cloak class="text-center py-2">
+          <span class="w-14 h-14 rounded-full bg-success-50 text-success-600 grid place-items-center mx-auto mb-3">${icon('check-circle', 'w-8 h-8')}</span>
+          <p class="text-base font-bold text-ink-900">Knowledge element passed</p>
+          <p class="text-[13px] text-ink-500 mt-1">You scored <span x-text="score"></span>/${total}. Certificate issued and ${esc(c.cpd)} CPD hours added to your record.</p>
+          <div class="mt-3 rounded-xl bg-info-50 ring-1 ring-info-100 p-3 text-[12px] text-info-700 text-left flex items-start gap-2">${icon('info', 'w-4 h-4 shrink-0 mt-0.5')}<span>You still need a <strong>practical competency sign-off</strong> by ${esc(comp.observedBy || 'a competent assessor')} before administering unsupervised.</span></div>
+          <button onclick="window.__completeCourse('${c.id}','${esc(c.title)}')" class="btn btn-primary btn-md w-full mt-4">${icon('file-check', 'w-4 h-4')}Finish &amp; record completion</button>
+        </div>
+
+      </div>
+    </div>
+  </div>`
+}
+
 /** The x-data init string for a course card's Alpine state (quiz-length aware). */
 function courseCardState(c) {
   const ct = LEARNING_CONTENT[c.id]
   const quiz = ct ? (Array.isArray(ct.quiz) ? ct.quiz : [ct.quiz]) : []
   const nulls = quiz.map(() => 'null').join(',')
+  if (isModular(c)) {
+    const doneN = c.resumeDone || 0
+    const doneArr = Array.from({ length: doneN }, (_, i) => i).join(',')
+    return `{ modal:false, cert:false, view:'overview', mod:${c.resumeModule || 0}, mscreen:${c.resumeScreen || 0}, done:[${doneArr}], mpick:null, mpicks:[], mchecked:false, mcorrect:false, answers:[${nulls}], submitted:false, passed:false, score:0 }`
+  }
   return `{ modal:false, step:0, screen:${c.resumeScreen || 0}, cert:false, answers:[${nulls}], submitted:false, passed:false, score:0 }`
 }
 
 /** Reset expression run when (re)opening the modal to start the flow clean. */
 function openModalExpr(c) {
+  // Modular course: resume at the contents page, keeping module progress intact.
+  if (isModular(c)) return `modal=true;view='overview'`
   const ct = LEARNING_CONTENT[c.id]
   const quiz = ct ? (Array.isArray(ct.quiz) ? ct.quiz : [ct.quiz]) : []
   const nulls = quiz.map(() => 'null').join(',')
