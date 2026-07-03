@@ -84,6 +84,11 @@
      'Instrument Sans', 'Onest'. Keep the system fallbacks. */
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
+  /* Relax the small-text line-heights so multi-line info/warning card copy (and
+     chips) breathe instead of stacking tightly. Defaults are 1rem / 1.25rem. */
+  --text-xs--line-height: 1.15rem;
+  --text-sm--line-height: 1.45rem;
+
   /* ---- Radii ---- */
   --radius-card: 0.75rem;
 
@@ -171,6 +176,13 @@
            placeholder:text-ink-400 focus:ring-2 focus:ring-primary-500 transition-shadow;
   }
   .field-md { @apply h-9.5 px-3; }
+  /* Native selects: hide the default arrow, add a consistent chevron. */
+  select.field {
+    @apply appearance-none pr-9 bg-no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 1.05rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236a778a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
   .label { @apply block text-[13px] font-semibold text-ink-700 mb-1.5; }
   .hint { @apply text-xs text-ink-500 mt-1; }
   /* Bottom-sheet record forms: calmer field borders (labels keep the default weight/colour). */
@@ -180,7 +192,7 @@
   /* Soft filled chips — no hard border. Colour comes from the bg/text utilities at
      the call site; any leftover ring colour class is inert without a ring width. */
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
   }
 
   /* ---- Table ---- */

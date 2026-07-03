@@ -618,9 +618,9 @@ function fieldControls(loopExpr) {
       <div class="mb-4">
         <label class="label" x-text="f.label + (fieldNeeded(f) ? ' *' : '')"></label>
         <template x-if="f.type==='boolean'">
-          <div class="flex gap-2">
-            <button type="button" @click="setBool(f.key,true)" :class="form[f.key]===true ? 'bg-success-50 ring-success-300 text-success-700' : 'bg-white ring-ink-200 text-ink-600'" class="flex-1 h-10 rounded-lg ring-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold">${icon('check', 'w-4 h-4')}Yes</button>
-            <button type="button" @click="setBool(f.key,false)" :class="form[f.key]===false ? 'bg-danger-50 ring-danger-300 text-danger-700' : 'bg-white ring-ink-200 text-ink-600'" class="flex-1 h-10 rounded-lg ring-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold">${icon('x', 'w-4 h-4')}No</button>
+          <div class="flex gap-2.5">
+            <button type="button" @click="setBool(f.key,true)" :class="form[f.key]===true ? 'bg-success-600 text-white' : 'bg-ink-100 text-ink-500'" class="flex-1 h-11 rounded-xl inline-flex items-center justify-center gap-1.5 text-sm font-semibold">${icon('check', 'w-4 h-4')}Yes</button>
+            <button type="button" @click="setBool(f.key,false)" :class="form[f.key]===false ? 'bg-danger-500 text-white' : 'bg-ink-100 text-ink-500'" class="flex-1 h-11 rounded-xl inline-flex items-center justify-center gap-1.5 text-sm font-semibold">${icon('x', 'w-4 h-4')}No</button>
           </div>
         </template>
         <template x-if="f.type==='select'">
@@ -719,7 +719,7 @@ const BANNER_TONE = {
 }
 const banner = (tone, inner, iconName) => {
   const t = BANNER_TONE[tone] || BANNER_TONE.warning
-  return html`<div class="rounded-xl ring-1 ${t.cls} p-3 flex items-start gap-2.5">${icon(iconName || t.ic, 'w-4 h-4 shrink-0 mt-0.5')}<div class="min-w-0 flex-1 text-[13px] leading-relaxed">${inner}</div></div>`
+  return html`<div class="rounded-xl ring-1 ${t.cls} p-3.5 flex items-start gap-2.5">${icon(iconName || t.ic, 'w-4 h-4 shrink-0 mt-0.5')}<div class="min-w-0 flex-1 text-[13px] leading-relaxed">${inner}</div></div>`
 }
 
 /* One selectable MAR outcome row (colour dot + label + manager-review flag + tick).
@@ -1146,8 +1146,8 @@ export function renderCarerVisit({ visit }) {
             <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
               ${recordSheetHeader('activeTask.title', 'activeTask.typeLabel')}
               <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
-                <div class="rounded-xl bg-primary-50 ring-1 ring-primary-100 p-3.5"><p class="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">What to do</p><p class="text-sm text-primary-900" x-text="activeTask.instructions"></p></div>
-                <div x-show="activeTask.why" class="rounded-xl bg-teal-50 ring-1 ring-teal-100 p-3.5"><p class="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-1">Why</p><p class="text-sm text-teal-900" x-text="activeTask.why"></p></div>
+                <div class="rounded-xl bg-primary-50 ring-1 ring-primary-100 p-3.5"><p class="section-title text-primary-700 mb-1.5">What to do</p><p class="text-sm leading-relaxed text-primary-900" x-text="activeTask.instructions"></p></div>
+                <div x-show="activeTask.why" class="rounded-xl bg-teal-50 ring-1 ring-teal-100 p-3.5"><p class="section-title text-teal-700 mb-1.5">Why</p><p class="text-sm leading-relaxed text-teal-900" x-text="activeTask.why"></p></div>
                 ${errorBox}
                 <div x-show="!activeTask.isMed">
                   <p class="text-[15px] font-semibold text-ink-900 mb-2.5">How did it go?</p>
