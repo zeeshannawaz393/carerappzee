@@ -46,6 +46,7 @@ function taskFromDef(rawId, def, i) {
     instructions: def.instr || def.instructions || tpl?.instructions?.short || '',
     why: tpl?.purpose || tpl?.description || '',
     isMed: (def.type || tpl?.type) === 'medication',
+    medIds: def.medIds || tpl?.medIds || [],
     twoPerson: (tpl?.dependencies || []).some((dep) => /two carer/i.test(dep)),
     required: REQUIRED_RULES.includes(tpl?.completionRule) || ['essential', 'critical'].includes(def.priority || tpl?.priority),
     fields,
@@ -67,8 +68,11 @@ export function buildVisit(visitId) {
 
 /** Progress used on the home rota (tasks + scheduled meds). */
 export function visitProgressFor(v) {
-  const total = v.tasks.length + v.meds.scheduled.length
-  let done = v.tasks.filter((t) => carerStore.task(v.rota.id, t.id)).length
+  // Medication tasks are counted via their scheduled meds (eMAR), not as tasks.
+  const hasMeds = v.meds.scheduled.length > 0
+  const tasks = v.tasks.filter((t) => !(t.isMed && hasMeds))
+  const total = tasks.length + v.meds.scheduled.length
+  let done = tasks.filter((t) => carerStore.task(v.rota.id, t.id)).length
   done += v.meds.scheduled.filter((m) => carerStore.medRecord(v.rota.id, m.id)).length
   return { done, total, pct: total ? Math.round((done / total) * 100) : 0 }
 }
@@ -151,12 +155,16 @@ export function registerCarerApp(Alpine) {
       return [...new Set(ids)].map((id) => OBSERVATION_TYPES.find((o) => o.id === id)).filter(Boolean)
     },
     get progress() {
-      const total = this.tasks.length + this.scheduled.length
-      let done = this.tasks.filter((t) => t.record).length + this.scheduled.filter((m) => this.medRec(m.id)).length
+      // Medication tasks are represented by their scheduled meds (recorded on the
+      // eMAR), so exclude them here to avoid double-counting.
+      const tasks = this.tasks.filter((t) => !(t.isMed && this.medsForTask(t).length))
+      const total = tasks.length + this.scheduled.length
+      let done = tasks.filter((t) => t.record).length + this.scheduled.filter((m) => this.medRec(m.id)).length
       return { done, total, pct: total ? Math.round((done / total) * 100) : 0 }
     },
     get blocking() {
-      const t = this.tasks.filter((x) => x.required && !x.record)
+      // A medication task is satisfied by recording its scheduled meds on the eMAR.
+      const t = this.tasks.filter((x) => x.required && !x.record && !(x.isMed && this.medsForTask(x).length))
       const meds = this.scheduled.filter((m) => !this.medRec(m.id))
       return [...t.map((x) => x.title), ...meds.map((m) => m.name)]
     },
@@ -164,9 +172,26 @@ export function registerCarerApp(Alpine) {
     get activeTask() { return this.tasks.find((t) => t.id === this.activeId) || null },
 
     /* ---------- status helpers ---------- */
-    statusOf(t) { return t.record ? t.record.status : 'pending' },
+    statusOf(t) {
+      // Medication tasks derive their status from their linked medicines (eMAR).
+      if (t.isMed && this.medsForTask(t).length) return this.medTaskStatus(t)
+      return t.record ? t.record.status : 'pending'
+    },
+    /** Roll a med task's linked-medicine eMAR outcomes up into one task status. */
+    medTaskStatus(t) {
+      const recs = this.medsForTask(t).map((m) => this.medRec(m.id))
+      if (recs.some((r) => !r)) return 'pending'
+      if (recs.some((r) => ['refused', 'unable'].includes(r.status))) return 'refused'
+      if (recs.some((r) => r.status === 'partial')) return 'partial'
+      return 'completed'
+    },
     statusColor(sname) { return { completed: 'text-success-600', refused: 'text-danger-600', unable: 'text-warning-600', partial: 'text-warning-600', flagged: 'text-danger-600', pending: 'text-ink-300' }[sname] || 'text-ink-300' },
-    medRec(medId) { return carerStore.medRecord(this.visitId, medId) },
+    // Read from the reactive medRows (kept current by refresh()) so the MAR rows,
+    // ticks and the med-task count re-render as soon as a medicine is recorded.
+    medRec(medId) { return this.medRows.find((m) => m.medId === medId) || null },
+    /** All eMAR records for a PRN medicine this visit (PRN may be given repeatedly). */
+    prnRecs(medId) { return this.medRows.filter((m) => m.medId === medId) },
+    prnLast(medId) { const r = this.prnRecs(medId); return r.length ? r[r.length - 1] : null },
     medAllergyWarn(med) { return med.relatedAllergy && (this.su.allergies || []).includes(med.relatedAllergy) },
 
     /* ---------- clock ---------- */
@@ -265,11 +290,35 @@ export function registerCarerApp(Alpine) {
         window.__notify('Two-person task — unsafe to perform alone. Co-carer must be present.', 'warning')
         return
       }
+      // Medication tasks are recorded on the eMAR (MAR status codes), not a separate
+      // task-outcome sheet. Route to the medicine list when the task has linked meds.
+      if (t0 && t0.isMed && this.medsForTask(t0).length) { this.openMedFromTask(); return }
       this.activeId = id; this.errors = []
       const t = this.activeTask; const rec = t.record
       this.form = rec ? { ...rec.evidence } : this.defaultForm(t.fields)
       this.outcome = rec ? rec.outcomeRaw || '' : t.isMed ? '' : 'Completed'
       this.sheet = 'task'
+    },
+    /** A medication task navigates to the eMAR medicine list, where each of its
+     *  linked medicines is recorded individually. */
+    openMedFromTask() { this.sheet = null; this.tab = 'mar' },
+    /** The specific medicines a medication task covers (its linked meds, else all
+     *  scheduled meds for the visit). */
+    medsForTask(t) {
+      if (Array.isArray(t.medIds) && t.medIds.length) return this.scheduled.filter((m) => t.medIds.includes(m.id))
+      return this.scheduled
+    },
+    /** How many of a med task's medicines have been recorded, and how many total. */
+    medTaskCount(t) {
+      const meds = this.medsForTask(t)
+      return { given: meds.filter((m) => this.medRec(m.id)).length, total: meds.length }
+    },
+    /** Sub-label for a med task row: "1 of 2 medicines given". */
+    medTaskLabel(t) {
+      const { given, total } = this.medTaskCount(t)
+      if (!total) return t.typeLabel
+      if (given >= total) return `All ${total} medicine${total > 1 ? 's' : ''} given`
+      return `${given} of ${total} medicine${total > 1 ? 's' : ''} given`
     },
     validateTask() {
       const t = this.activeTask; const e = []
@@ -645,13 +694,37 @@ function bodyMapControl(arrExpr) {
     </div>`
 }
 
-const sheetHeader = (titleExpr, subExpr) => html`
-  <div class="px-4 py-3 border-b border-ink-100 bg-surface flex items-center gap-2 shrink-0">
-    <button @click="sheet=null; errors=[]" class="btn btn-ghost btn-sm !px-2">${icon('chevron-left', 'w-5 h-5')}</button>
-    <div class="min-w-0 flex-1"><p class="text-sm font-semibold text-ink-900 truncate" x-text="${titleExpr}"></p><p class="text-xs text-ink-400" x-text="${subExpr}"></p></div>
+/* Header for a bottom-sheet record form: a grabber handle + title + close.
+   Used by the task / medication / observation record sheets. */
+const recordSheetHeader = (titleExpr, subExpr) => html`
+  <div class="shrink-0 bg-surface">
+    <div class="mx-auto w-9 h-1.5 rounded-full bg-ink-200 mt-2.5"></div>
+    <div class="px-4 py-2.5 border-b border-ink-100 flex items-center gap-2">
+      <div class="min-w-0 flex-1"><p class="text-base font-bold tracking-tight text-ink-900 truncate" x-text="${titleExpr}"></p><p class="text-xs text-ink-400" x-text="${subExpr}"></p></div>
+      <button @click="sheet=null; errors=[]" class="btn btn-ghost btn-sm !px-2">${icon('x', 'w-5 h-5')}</button>
+    </div>
   </div>`
 
 const errorBox = html`<div x-show="errors.length" x-cloak class="rounded-xl bg-danger-50 ring-1 ring-danger-100 p-3"><p class="text-xs font-semibold text-danger-700 mb-1 flex items-center gap-1.5">${icon('alert', 'w-3.5 h-3.5')}Please fix:</p><ul class="text-sm text-danger-800 list-disc pl-5 space-y-0.5"><template x-for="e in errors" :key="e"><li x-text="e"></li></template></ul></div>`
+
+/* One consistent alert banner for every sheet. tone → colours + default icon.
+   Pass `inner` (a title <p> and/or body <p>s, or a plain string) — the shell owns
+   radius, tone, top-aligned icon, padding and 13px text so banners never drift. */
+const BANNER_TONE = {
+  info: { cls: 'bg-info-50 ring-info-100 text-info-800', ic: 'info' },
+  warning: { cls: 'bg-warning-50 ring-warning-100 text-warning-800', ic: 'alert' },
+  danger: { cls: 'bg-danger-50 ring-danger-200 text-danger-800', ic: 'alert' },
+  primary: { cls: 'bg-primary-50 ring-primary-100 text-primary-800', ic: 'info' },
+  success: { cls: 'bg-success-50 ring-success-100 text-success-800', ic: 'check-circle' },
+}
+const banner = (tone, inner, iconName) => {
+  const t = BANNER_TONE[tone] || BANNER_TONE.warning
+  return html`<div class="rounded-xl ring-1 ${t.cls} p-3 flex items-start gap-2.5">${icon(iconName || t.ic, 'w-4 h-4 shrink-0 mt-0.5')}<div class="min-w-0 flex-1 text-[13px] leading-relaxed">${inner}</div></div>`
+}
+
+/* One selectable MAR outcome row (colour dot + label + manager-review flag + tick).
+   Rendered inside an x-for over `m` — used for both the default set and the rest. */
+const marOutcomeRow = html`<button type="button" @click="pickMar(m.code)" :class="marCode===m.code ? 'bg-primary-50' : 'bg-surface'" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-ink-50"><span class="w-3 h-3 rounded-full shrink-0 ring-1 ring-black/5" :style="'background:'+m.color"></span><span class="flex-1 text-sm font-medium text-ink-800" x-text="m.label"></span><template x-if="m.managerReview==='required'"><span class="text-[11px] font-medium text-warning-700 shrink-0">review</span></template><span x-show="marCode===m.code" x-cloak class="text-primary-600 shrink-0">${icon('check', 'w-4 h-4')}</span></button>`
 
 /* =====================================================================
    Home — rota across service users
@@ -686,7 +759,7 @@ export function renderCarer() {
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4 space-y-3">
+      <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3">
         ${map(visits, (v) => {
           const status = v.clock.out ? 'Completed' : v.clock.in ? 'In progress' : 'Upcoming'
           const tone = v.clock.out ? 'bg-success-50 text-success-700 ring-success-100' : v.clock.in ? 'bg-warning-50 text-warning-700 ring-warning-100' : 'bg-ink-100 text-ink-500 ring-ink-200'
@@ -833,7 +906,9 @@ export function renderCarerVisit({ visit }) {
       </div>
 
       <!-- ===================== TAB CONTENT ===================== -->
-      <div class="flex-1 overflow-y-auto relative">
+      <!-- Freeze the workspace scroll while a bottom sheet is open, so nothing
+           behind the sheet can move or peek through on scroll. -->
+      <div class="flex-1 overscroll-contain relative" :class="sheet ? 'overflow-hidden' : 'overflow-y-auto'">
 
         <!-- OVERVIEW -->
         <div x-show="tab==='overview'" class="p-4 space-y-4">
@@ -879,7 +954,7 @@ export function renderCarerVisit({ visit }) {
                 <button @click="openTask(t.id)" class="w-full text-left p-4 flex items-center gap-3 active:bg-ink-50">
                   <span class="w-6 h-6 rounded-md grid place-items-center shrink-0" :class="statusOf(t)==='completed' ? 'bg-success-500 text-white' : statusOf(t)==='pending' ? 'ring-1 ring-ink-300' : (statusOf(t)==='partial' ? 'bg-warning-500 text-white' : 'bg-danger-500 text-white')"><span x-show="statusOf(t)!=='pending'" x-html="window.__icon(statusOf(t))"></span></span>
                   <span x-html="window.__catIcon(t.categoryId)"></span>
-                  <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink-900" :class="statusOf(t)==='completed' && 'line-through text-ink-400'" x-text="t.title"></span><span class="block text-xs"><span x-show="t.record" :class="statusColor(statusOf(t))" class="font-medium" x-text="t.record ? t.record.outcomeLabel : ''"></span><span x-show="!t.record" class="text-ink-500" x-text="t.typeLabel"></span></span></span>
+                  <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink-900" :class="statusOf(t)==='completed' && 'line-through text-ink-400'" x-text="t.title"></span><span class="block text-xs"><span x-show="t.isMed" :class="statusColor(statusOf(t))" class="font-medium" x-text="medTaskLabel(t)"></span><span x-show="!t.isMed && t.record" :class="statusColor(statusOf(t))" class="font-medium" x-text="t.record ? t.record.outcomeLabel : ''"></span><span x-show="!t.isMed && !t.record" class="text-ink-500" x-text="t.typeLabel"></span></span></span>
                   <span x-show="t.isMed" class="badge bg-danger-50 text-danger-700 ring-danger-100">eMAR</span>
                   <span x-show="t.twoPerson" class="badge" :class="coCarerPresent ? 'bg-success-50 text-success-700 ring-success-100' : 'bg-warning-50 text-warning-700 ring-warning-100'">${icon('users', 'w-3 h-3')}2</span>
                   <span class="text-ink-300">${icon('chevron-right', 'w-4 h-4')}</span>
@@ -937,7 +1012,7 @@ export function renderCarerVisit({ visit }) {
               <template x-for="m in prn" :key="m.id">
                 <button @click="openMed(m)" class="w-full text-left p-4 flex items-center gap-3 active:bg-ink-50">
                   <span class="w-8 h-8 rounded-lg grid place-items-center shrink-0" :class="medAllergyWarn(m) ? 'bg-danger-100 text-danger-700' : m.controlled ? 'bg-warning-100 text-warning-700' : 'bg-ink-100 text-ink-500'">${icon('pill', 'w-4 h-4')}</span>
-                  <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink-900" x-text="m.name"></span><span class="block text-xs text-ink-500" x-text="m.dose+' · '+(m.prnReason||'PRN')"></span></span>
+                  <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink-900" x-text="m.name"></span><span class="block text-xs text-ink-500" x-text="m.dose+' · '+(m.prnReason||'PRN')"></span><span x-show="prnLast(m.id)" x-cloak class="block text-xs font-medium mt-0.5" :class="statusColor((prnLast(m.id)||{}).status)" x-text="'Given '+prnRecs(m.id).length+'× · '+((prnLast(m.id)||{}).outcome||'')"></span></span>
                   <template x-if="m.controlled"><span class="badge bg-warning-50 text-warning-700 ring-warning-100">CD</span></template>
                   <template x-if="medAllergyWarn(m)"><span class="badge bg-danger-50 text-danger-700 ring-danger-100">Allergy</span></template>
                   <span class="text-ink-300">${icon('chevron-right', 'w-4 h-4')}</span>
@@ -1066,11 +1141,11 @@ export function renderCarerVisit({ visit }) {
         <!-- ================= SHEETS (overlays) ================= -->
 
         <!-- task sheet -->
-        <div x-show="sheet==='task'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-20">
+        <div x-show="sheet==='task'" x-cloak class="absolute inset-0 z-20 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
           <template x-if="activeTask">
-            <div class="flex flex-col h-full">
-              ${sheetHeader('activeTask.title', 'activeTask.typeLabel')}
-              <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+              ${recordSheetHeader('activeTask.title', 'activeTask.typeLabel')}
+              <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
                 <div class="rounded-xl bg-primary-50 ring-1 ring-primary-100 p-3.5"><p class="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">What to do</p><p class="text-sm text-primary-900" x-text="activeTask.instructions"></p></div>
                 <div x-show="activeTask.why" class="rounded-xl bg-teal-50 ring-1 ring-teal-100 p-3.5"><p class="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-1">Why</p><p class="text-sm text-teal-900" x-text="activeTask.why"></p></div>
                 ${errorBox}
@@ -1087,32 +1162,44 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- medication sheet -->
-        <div x-show="sheet==='med'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-20">
+        <div x-show="sheet==='med'" x-cloak class="absolute inset-0 z-20 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
           <template x-if="activeMed">
-            <div class="flex flex-col h-full">
-              ${sheetHeader('activeMed.name', 'activeMed.dose + " · " + activeMed.route')}
-              <div class="flex-1 overflow-y-auto p-4 space-y-4">
-                <template x-if="allergyState.warn"><div class="rounded-xl bg-warning-500 text-white p-3.5"><p class="text-sm font-semibold flex items-center gap-2">${icon('alert', 'w-4 h-4')}<span x-text="allergyState.label"></span></p><p class="text-sm mt-1">Allergy status is not confirmed. Acknowledge before administering; office confirmation may be required.</p></div></template>
-                <template x-if="medAllergyWarn(activeMed)"><div class="rounded-xl bg-danger-500 text-white p-3.5"><p class="text-sm font-semibold flex items-center gap-2">${icon('alert', 'w-4 h-4')}ALLERGY WARNING</p><p class="text-sm mt-1">Allergic to <span x-text="activeMed.relatedAllergy"></span>. Do not administer without prescriber confirmation.</p></div></template>
-                <template x-if="medBlock"><div class="rounded-xl p-3.5" :class="medBlock.hard ? 'bg-danger-50 ring-1 ring-danger-200' : 'bg-warning-50 ring-1 ring-warning-100'"><p class="text-sm font-semibold flex items-center gap-2" :class="medBlock.hard ? 'text-danger-700' : 'text-warning-700'">${icon('alert', 'w-4 h-4')}<span x-text="medBlock.reason"></span></p><p class="text-sm mt-0.5" :class="medBlock.hard ? 'text-danger-800' : 'text-warning-800'" x-text="medBlock.detail"></p></div></template>
-                <template x-if="medRecon"><div class="rounded-xl bg-warning-50 ring-1 ring-warning-200 p-3.5"><p class="text-sm font-semibold text-warning-700 flex items-center gap-2">${icon('refresh', 'w-4 h-4')}Medication changed since last visit</p><p class="text-sm text-warning-800 mt-0.5" x-text="medRecon.reason"></p><template x-if="medRecon.conflict"><p class="text-xs text-danger-700 mt-1 font-medium">Order stopped — a dose given before the stop synced will be flagged. Stop wins.</p></template><p class="text-xs text-warning-700 mt-1">Withheld until reconciled — resolve in the client's <b>Medication orders</b> screen, or override with a reason.</p></div></template>
-                <div class="card p-3.5 space-y-1.5 text-sm">
-                  <div class="flex justify-between"><span class="text-ink-400">Dose</span><span class="font-medium text-ink-800" x-text="activeMed.dose"></span></div>
-                  <div class="flex justify-between"><span class="text-ink-400">Route / form</span><span class="font-medium text-ink-800" x-text="activeMed.route + ' · ' + activeMed.form"></span></div>
-                  <div class="flex justify-between"><span class="text-ink-400">When</span><span class="font-medium text-ink-800" x-text="activeMed.due"></span></div>
-                  <template x-if="activeMed.instr"><p class="text-ink-600 pt-1" x-text="activeMed.instr"></p></template>
-                  <div class="flex flex-wrap gap-1.5 pt-1"><template x-if="activeMed.controlled"><span class="badge bg-warning-50 text-warning-700 ring-warning-100">Controlled drug</span></template><template x-if="activeMed.covert"><span class="badge bg-ink-100 text-ink-600 ring-ink-200">Covert (MCA)</span></template><template x-if="activeMed.timeCritical"><span class="badge bg-danger-50 text-danger-700 ring-danger-100">Time-critical</span></template></div>
+            <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+              ${recordSheetHeader('activeMed.name', 'activeMed.dose + " · " + activeMed.route')}
+              <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
+                <div class="space-y-2">
+                  <template x-if="allergyState.warn"><div class="rounded-xl bg-warning-500 text-white p-3"><p class="text-[13px] font-semibold flex items-center gap-2">${icon('alert', 'w-4 h-4')}<span x-text="allergyState.label"></span></p><p class="text-[13px] mt-0.5">Allergy status is not confirmed. Acknowledge before administering; office confirmation may be required.</p></div></template>
+                  <template x-if="medAllergyWarn(activeMed)"><div class="rounded-xl bg-danger-500 text-white p-3"><p class="text-[13px] font-semibold flex items-center gap-2">${icon('alert', 'w-4 h-4')}ALLERGY WARNING</p><p class="text-[13px] mt-0.5">Allergic to <span x-text="activeMed.relatedAllergy"></span>. Do not administer without prescriber confirmation.</p></div></template>
+                  <template x-if="medBlock"><div class="rounded-xl p-3" :class="medBlock.hard ? 'bg-danger-50 ring-1 ring-danger-200' : 'bg-warning-50 ring-1 ring-warning-100'"><p class="text-[13px] font-semibold flex items-center gap-2" :class="medBlock.hard ? 'text-danger-700' : 'text-warning-700'">${icon('alert', 'w-4 h-4')}<span x-text="medBlock.reason"></span></p><p class="text-[13px] mt-0.5" :class="medBlock.hard ? 'text-danger-800' : 'text-warning-800'" x-text="medBlock.detail"></p></div></template>
+                  <template x-if="medRecon">${banner('warning', html`<p class="font-semibold">Medication changed since last visit</p><p class="mt-0.5" x-text="medRecon.reason"></p><template x-if="medRecon.conflict"><p class="text-danger-700 mt-1 font-medium">Order stopped — a dose given before the stop synced will be flagged. Stop wins.</p></template><p class="mt-1">Withheld until reconciled — resolve in the client's <b>Medication orders</b> screen, or override with a reason.</p>`, 'refresh')}</template>
+                </div>
+                <div class="card p-4">
+                  <div class="flex items-baseline justify-between gap-3">
+                    <span class="text-xl font-bold text-ink-900" x-text="activeMed.dose"></span>
+                    <span class="text-[13px] text-ink-500 text-right shrink-0" x-text="activeMed.route + ' · ' + activeMed.form"></span>
+                  </div>
+                  <p class="text-[13px] text-ink-500 mt-1">Due <span class="font-medium text-ink-700" x-text="activeMed.due"></span></p>
+                  <template x-if="activeMed.instr"><p class="text-[13px] text-ink-600 mt-2 leading-relaxed" x-text="activeMed.instr"></p></template>
+                  <div class="flex flex-wrap gap-1.5 mt-2.5" x-show="activeMed.controlled || activeMed.covert || activeMed.timeCritical" x-cloak><template x-if="activeMed.controlled"><span class="badge bg-warning-50 text-warning-700 ring-warning-100">Controlled drug</span></template><template x-if="activeMed.covert"><span class="badge bg-ink-100 text-ink-600 ring-ink-200">Covert (MCA)</span></template><template x-if="activeMed.timeCritical"><span class="badge bg-danger-50 text-danger-700 ring-danger-100">Time-critical</span></template></div>
                 </div>
                 ${errorBox}
-                <div><p class="label">Support action *</p><div class="grid grid-cols-3 gap-1.5"><template x-for="s in SUPPORT_ACTIONS" :key="s.id"><button type="button" @click="supportAction=s.id" :class="supportAction===s.id ? 'bg-primary-600 text-white ring-primary-600' : 'bg-white text-ink-600 ring-ink-200'" class="h-9 rounded-lg ring-1 text-xs font-semibold px-1" x-text="s.label"></button></template></div></div>
+                <div x-data="{ open:false, TOP:['G','R','N','U'] }">
+                  <p class="text-[15px] font-semibold text-ink-900 mb-2.5" x-text="'Did '+((su.name||'they').split(' ')[0])+' take it?'"></p>
+                  <div class="rounded-2xl ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">
+                    <template x-for="m in MAR_STATUS_CODES.filter(c=>TOP.includes(c.code))" :key="m.code">${marOutcomeRow}</template>
+                  </div>
+                  <button type="button" @click="open=!open" class="w-full mt-2 py-1 text-[13px] font-medium text-ink-500 flex items-center justify-center gap-1"><span x-text="open ? 'Fewer outcomes' : 'More outcomes'"></span><span :class="open && 'rotate-180'" class="transition-transform inline-flex">${icon('chevron-down', 'w-4 h-4')}</span></button>
+                  <div x-show="open || (marCode && !TOP.includes(marCode))" x-cloak class="rounded-2xl ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">
+                    <template x-for="m in MAR_STATUS_CODES.filter(c=>!['G','R','N','U','Pending'].includes(c.code))" :key="m.code">${marOutcomeRow}</template>
+                  </div>
+                </div>
                 <div>
-                  <p class="label">MAR code *</p>
-                  <div class="grid grid-cols-5 gap-1.5">
-                    <template x-for="m in MAR_STATUS_CODES" :key="m.code">
-                      <button type="button" @click="pickMar(m.code)" :title="m.label" :style="marCode===m.code ? ('background:'+m.color+';border-color:'+m.color+';color:'+m.textColor) : ''" :class="marCode===m.code ? '' : 'bg-white text-ink-700 ring-ink-200'" class="h-9 rounded-lg ring-1 text-xs font-bold px-0.5 leading-none truncate" x-text="m.code"></button>
+                  <p class="text-[15px] font-semibold text-ink-900 mb-2.5">How did you support?</p>
+                  <div class="flex flex-wrap gap-2">
+                    <template x-for="s in SUPPORT_ACTIONS" :key="s.id">
+                      <button type="button" @click="supportAction=s.id" :class="supportAction===s.id ? 'bg-primary-600 text-white ring-primary-600' : 'bg-surface text-ink-600 ring-ink-200'" class="rounded-full ring-1 px-3.5 py-2 text-[13px] font-medium" x-text="s.label"></button>
                     </template>
                   </div>
-                  <p x-show="marCode" x-cloak class="text-xs mt-1.5 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" :style="'background:'+((MAR_STATUS_CODES.find(m=>m.code===marCode)||{}).color)"></span><span class="text-ink-700 font-medium" x-text="(MAR_STATUS_CODES.find(m=>m.code===marCode)||{}).label"></span><span x-show="(MAR_STATUS_CODES.find(m=>m.code===marCode)||{}).managerReview==='required'" class="text-warning-700">· flags for manager review</span></p>
                 </div>
                 <template x-if="activeMed.group==='PRN' && doseOut==='taken'"><div><label class="label">PRN reason *</label><input x-model="prnReason" class="field field-md" placeholder="e.g. pain" /></div></template>
                 <template x-if="activeMed.controlled && doseOut==='taken'"><div class="rounded-lg ring-1 ring-warning-200 bg-warning-50 p-3 space-y-2">
@@ -1126,9 +1213,11 @@ export function renderCarerVisit({ visit }) {
                     <template x-if="witnessFallback"><p class="text-xs text-warning-700 mt-1" x-text="(WITNESS_FALLBACKS.find(f=>f.id===witnessFallback)||{}).note"></p></template>
                   </div>
                 </div></template>
-                <div><label class="label">Time given</label><input type="time" x-model="form.time" class="field field-md" /></div>
-                <template x-if="activeMed.group==='PRN' && doseOut==='taken'"><div><label class="label">Effectiveness (follow-up in 60 min)</label><select x-model="form.effect" class="field field-md"><option value="">Review in 60 min</option><option>Effective</option><option>Partially effective</option><option>Not effective</option></select></div></template>
-                <div><label class="label">Note</label><textarea x-model="form.note" rows="2" class="field px-3 py-2" placeholder="Reason if not taken / comment…"></textarea></div>
+                <div class="space-y-3">
+                  <div><label class="label">Time given</label><input type="time" x-model="form.time" class="field field-md" /></div>
+                  <template x-if="activeMed.group==='PRN' && doseOut==='taken'"><div><label class="label">Effectiveness (follow-up in 60 min)</label><select x-model="form.effect" class="field field-md"><option value="">Review in 60 min</option><option>Effective</option><option>Partially effective</option><option>Not effective</option></select></div></template>
+                  <div><label class="label"><span x-text="['refused','omitted','unavailable','withheld','partly-taken'].includes(doseOut) ? 'Reason *' : 'Note'"></span></label><textarea x-model="form.note" rows="2" class="field px-3 py-2" placeholder="Reason if not taken / comment…"></textarea></div>
+                </div>
                 <template x-if="(medBlock && medBlock.hard) || allergyState.warn || medRecon"><div class="rounded-lg ring-1 ring-danger-200 p-3"><label class="flex items-center gap-2 text-sm font-medium text-danger-700"><input type="checkbox" x-model="medOverride" class="w-4 h-4 rounded text-danger-600" />Override — I have checked the authorised source</label><template x-if="medOverride"><input x-model="overrideReason" class="field field-md mt-2" placeholder="Override reason (audited, office alerted)" /></template></div></template>
               </div>
               <div class="p-4 border-t border-ink-200 bg-surface shrink-0"><button @click="saveMed()" class="btn btn-primary btn-lg w-full">${icon('check', 'w-5 h-5')}Record on eMAR</button></div>
@@ -1137,11 +1226,11 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- wrong-person: two-identifier confirmation (§14.2) -->
-        <div x-show="sheet==='confirmPerson'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-30">
-          <div class="flex flex-col h-full">
-            ${sheetHeader("'Confirm the person'", "'Two-identifier check'")}
-            <div class="flex-1 overflow-y-auto p-4 space-y-4">
-              <div class="rounded-xl bg-warning-50 ring-1 ring-warning-100 p-3 text-sm text-warning-800 flex items-center gap-2">${icon('alert', 'w-4 h-4')}Confirm you are recording for the right person before medication or high-risk care.</div>
+        <div x-show="sheet==='confirmPerson'" x-cloak class="absolute inset-0 z-30 bg-black/40 flex items-end" @click.self="sheet=null; pendingAction=null">
+          <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+            ${recordSheetHeader("'Confirm the person'", "'Two-identifier check'")}
+            <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
+              ${banner('warning', 'Confirm you are recording for the right person before medication or high-risk care.')}
               <div class="card p-4 flex items-center gap-3">
                 <span class="w-14 h-14 rounded-2xl bg-primary-100 text-primary-700 grid place-items-center text-lg font-bold" x-text="su.initials"></span>
                 <div><p class="text-base font-semibold text-ink-900" x-text="su.name"></p><p class="text-sm text-ink-500">DOB <span x-text="su.dob"></span> · NHS <span x-text="su.nhs"></span></p></div>
@@ -1156,10 +1245,10 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- emergency protocol picker (§51) -->
-        <div x-show="sheet==='protocolPick'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-30">
-          <div class="flex flex-col h-full">
-            ${sheetHeader("'Emergency protocols'", 'su.name')}
-            <div class="flex-1 overflow-y-auto p-4 space-y-2">
+        <div x-show="sheet==='protocolPick'" x-cloak class="absolute inset-0 z-30 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
+          <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+            ${recordSheetHeader("'Emergency protocols'", 'su.name')}
+            <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-2 sheet-body">
               <div class="rounded-xl bg-danger-50 ring-1 ring-danger-100 p-3 text-sm text-danger-800 flex items-center gap-2">${icon('shield', 'w-4 h-4')}Launch a closed-loop protocol. Each step is recorded to closure.</div>
               <template x-for="p in PROTOCOL_LIST" :key="p.id">
                 <button @click="launchProtocol(p.id)" class="w-full text-left card p-3.5 flex items-center gap-3 active:scale-[.99]"><span class="w-9 h-9 rounded-lg bg-danger-50 text-danger-600 grid place-items-center">${icon('alert', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900" x-text="p.name"></p><p class="text-xs text-ink-400" x-text="p.trigger + ' · ' + p.version"></p></div>${icon('chevron-right', 'w-4 h-4 text-ink-300')}</button>
@@ -1177,8 +1266,8 @@ export function renderCarerVisit({ visit }) {
                 <h2 class="text-lg font-bold mt-1" x-text="activeProtocol.name"></h2>
                 <div class="mt-2 flex gap-1"><template x-for="(s,i) in activeProtocol.steps" :key="i"><span class="h-1.5 flex-1 rounded-full" :class="i<=protoStep ? 'bg-white' : 'bg-white/30'"></span></template></div>
               </div>
-              <div class="flex-1 overflow-y-auto p-4 space-y-3">
-                <p class="text-xs font-semibold uppercase tracking-wide text-ink-400">Step <span x-text="protoStep+1"></span> of <span x-text="activeProtocol.steps.length"></span></p>
+              <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4 sheet-body">
+                <p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Step <span x-text="protoStep+1"></span> of <span x-text="activeProtocol.steps.length"></span></p>
                 <p class="text-base font-semibold text-ink-900" x-text="protoCurrent.title"></p>
                 <template x-if="protoCurrent.type==='action'">
                   <div class="space-y-2"><template x-for="(it,i) in protoCurrent.items" :key="i"><button @click="protoMark('a'+i)" :class="protoLog['a'+i] ? 'ring-success-300 bg-success-50' : 'ring-ink-200'" class="w-full flex items-center gap-2.5 p-3 rounded-lg ring-1 text-left"><span class="w-5 h-5 rounded grid place-items-center shrink-0" :class="protoLog['a'+i] ? 'bg-success-600 text-white' : 'ring-1 ring-ink-300'"><span x-show="protoLog['a'+i]">${icon('check', 'w-3.5 h-3.5')}</span></span><span class="text-sm text-ink-800" x-text="it"></span></button></template></div>
@@ -1200,21 +1289,21 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- observation form sheet -->
-        <div x-show="sheet==='obsForm'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-20">
+        <div x-show="sheet==='obsForm'" x-cloak class="absolute inset-0 z-20 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
           <template x-if="activeObs">
-            <div class="flex flex-col h-full">
-              ${sheetHeader('activeObs.name', 'activeObs.group')}
-              <div class="flex-1 overflow-y-auto p-4 space-y-4">${errorBox}${fieldControls('activeObs.fields')}</div>
+            <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+              ${recordSheetHeader('activeObs.name', 'activeObs.group')}
+              <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">${errorBox}${fieldControls('activeObs.fields')}</div>
               <div class="p-4 border-t border-ink-200 bg-surface shrink-0"><button @click="saveObs()" class="btn btn-primary btn-lg w-full">${icon('check', 'w-5 h-5')}Save observation</button></div>
             </div>
           </template>
         </div>
 
         <!-- incident sheet -->
-        <div x-show="sheet==='incident'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-20">
-          <div class="flex flex-col h-full">
-            ${sheetHeader("'Report an incident'", 'su.name')}
-            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div x-show="sheet==='incident'" x-cloak class="absolute inset-0 z-20 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
+          <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+            ${recordSheetHeader("'Report an incident'", 'su.name')}
+            <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
               <span x-effect="persistDraft()" class="hidden"></span>
               <div class="rounded-lg bg-ink-50 ring-1 ring-ink-200 p-2 flex items-center gap-2 text-xs text-ink-500">${icon('check', 'w-3.5 h-3.5 text-success-600')}Draft auto-saves as you type — safe to close and resume.</div>
               ${errorBox}
@@ -1247,10 +1336,10 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- summary sheet -->
-        <div x-show="sheet==='summary'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-20">
-          <div class="flex flex-col h-full">
-            ${sheetHeader("'Visit summary'", 'su.name')}
-            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+        <div x-show="sheet==='summary'" x-cloak class="absolute inset-0 z-20 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
+          <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+            ${recordSheetHeader("'Visit summary'", 'su.name')}
+            <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
               <div class="grid grid-cols-2 gap-3">
                 <div class="card p-3 text-center"><p class="text-2xl font-bold text-ink-900" x-text="tasks.filter(t=>t.record).length + '/' + tasks.length"></p><p class="text-xs text-ink-400">Tasks recorded</p></div>
                 <div class="card p-3 text-center"><p class="text-2xl font-bold text-ink-900" x-text="medRows.length"></p><p class="text-xs text-ink-400">Medications</p></div>
@@ -1272,10 +1361,10 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- check-in sheet (§14 ECM + welfare) -->
-        <div x-show="sheet==='checkin'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-30">
-          <div class="flex flex-col h-full">
-            ${sheetHeader("'Check in'", 'su.name')}
-            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div x-show="sheet==='checkin'" x-cloak class="absolute inset-0 z-30 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
+          <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+            ${recordSheetHeader("'Check in'", 'su.name')}
+            <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
               <div class="rounded-xl p-3.5" :class="checkinGeofence==='inside' ? 'bg-success-50 ring-1 ring-success-100' : 'bg-warning-50 ring-1 ring-warning-100'">
                 <p class="text-sm font-semibold flex items-center gap-2" :class="checkinGeofence==='inside' ? 'text-success-700' : 'text-warning-700'">${icon('map-pin', 'w-4 h-4')}<span x-text="checkinGeofence==='inside' ? 'Inside geofence (100m)' : 'Outside geofence — reason required'"></span></p>
                 <p class="text-xs mt-0.5" :class="checkinGeofence==='inside' ? 'text-success-700' : 'text-warning-800'" x-text="su.address"></p>
@@ -1290,10 +1379,10 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- leaving-safe checklist + outcome (§14/§55.7) -->
-        <div x-show="sheet==='leavingSafe'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-30">
-          <div class="flex flex-col h-full">
-            ${sheetHeader("'Leaving safe'", 'su.name')}
-            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div x-show="sheet==='leavingSafe'" x-cloak class="absolute inset-0 z-30 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
+          <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+            ${recordSheetHeader("'Leaving safe'", 'su.name')}
+            <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
               ${errorBox}
               <div class="rounded-xl bg-primary-50 ring-1 ring-primary-100 p-3 text-sm text-primary-800 flex items-center gap-2">${icon('shield', 'w-4 h-4')}Confirm the home is safe to leave. Each item: done or a defined exception.</div>
               <div class="space-y-2.5">
@@ -1324,10 +1413,10 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- context sheet -->
-        <div x-show="sheet==='context'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-20">
-          <div class="flex flex-col h-full">
-            ${sheetHeader('su.name', "'Care summary'")}
-            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+        <div x-show="sheet==='context'" x-cloak class="absolute inset-0 z-20 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
+          <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+            ${recordSheetHeader('su.name', "'Care summary'")}
+            <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
               <div class="card p-4"><p class="text-xs font-semibold text-danger-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">${icon('alert', 'w-3.5 h-3.5')}Allergies</p><div class="flex flex-wrap gap-1.5"><template x-for="a in (su.allergies||[])" :key="a"><span class="badge bg-danger-50 text-danger-700 ring-danger-100" x-text="a"></span></template><span x-show="!(su.allergies||[]).length" class="text-sm text-ink-500">None recorded</span></div></div>
               <div class="card p-4"><p class="text-xs font-semibold text-warning-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">${icon('shield', 'w-3.5 h-3.5')}Active risks</p><div class="flex flex-wrap gap-1.5"><template x-for="r in (su.risks||[])" :key="r"><span class="badge bg-warning-50 text-warning-700 ring-warning-100" x-text="r"></span></template><span x-show="!(su.risks||[]).length" class="text-sm text-ink-500">None recorded</span></div></div>
               ${aboutCareMarkup}
@@ -1339,10 +1428,10 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- message sheet -->
-        <div x-show="sheet==='message'" x-cloak class="absolute inset-0 bg-canvas flex flex-col z-20">
-          <div class="flex flex-col h-full">
-            ${sheetHeader("'Office & on-call'", 'su.name')}
-            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+        <div x-show="sheet==='message'" x-cloak class="absolute inset-0 z-20 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
+          <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+            ${recordSheetHeader("'Office & on-call'", 'su.name')}
+            <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
               <div class="card p-3.5"><label class="label">Message the office</label><textarea x-model="msgText" rows="3" class="field px-3 py-2" placeholder="Type a message…"></textarea><button @click="sendMessage()" class="btn btn-primary btn-sm mt-2">${icon('arrow-right', 'w-3.5 h-3.5')}Send</button></div>
               <button @click="window.__notify('Calling on-call manager…','info')" class="btn btn-secondary btn-md w-full">${icon('bell', 'w-4 h-4')}Call on-call manager</button>
               <div class="rounded-xl bg-danger-50 ring-1 ring-danger-100 p-3.5"><p class="text-xs font-semibold text-danger-700 uppercase tracking-wide mb-1 flex items-center gap-1.5">${icon('shield', 'w-3.5 h-3.5')}Lone worker</p><button @click="window.__notify('Safety check-in sent to office','success')" class="btn btn-danger btn-sm mt-1">Send safety check-in</button></div>

@@ -17,6 +17,7 @@ export const SERVICE_USER_TASKS = {
     {
       id: 'sut-2', sourceTemplateId: 'med-morning-prompt', version: 'v1.0', title: 'Prompt morning medication',
       categoryId: 'medication', type: 'medication', priority: 'critical', visit: 'Morning', frequency: 'Daily', week: ALL,
+      medIds: ['m-metformin', 'm-amlodipine'],
       instructions: 'Metformin 500mg + Amlodipine 5mg. Mary takes these with breakfast. Record outcome on eMAR.',
       todayStatus: 'completed', lastOutcome: 'Given', startDate: '2025-11-03', reviewDate: '2026-07-15',
     },

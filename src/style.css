@@ -173,6 +173,8 @@
   .field-md { @apply h-9.5 px-3; }
   .label { @apply block text-[13px] font-semibold text-ink-700 mb-1.5; }
   .hint { @apply text-xs text-ink-500 mt-1; }
+  /* Bottom-sheet record forms: calmer field borders (labels keep the default weight/colour). */
+  .sheet-body .field { @apply ring-ink-200; }
 
   /* ---- Badges / chips ---- */
   .badge {
