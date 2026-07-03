@@ -1,4 +1,5 @@
 import { html, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { page } from './_layout.js'
 import { icon } from '../icons.js'
 import { pageHeader, statCard, btn, sectionCard, badge, donut, barChart, severityBadge } from '../components/ui.js'
@@ -117,7 +118,7 @@ export function renderDashboard() {
           pad: 'p-3',
           body: html`<ul class="space-y-3">${map(recentActivity, (a) => html`<li class="flex gap-2.5 text-sm">
             <span class="w-1.5 h-1.5 rounded-full bg-primary-400 mt-1.5 shrink-0"></span>
-            <div><p class="text-ink-700"><span class="font-medium">${a.action}</span> — ${a.name}</p><p class="text-xs text-ink-400">${a.by} · ${a.at}</p></div>
+            <div><p class="text-ink-700"><span class="font-medium">${a.action}</span> — ${a.name}</p><p class="text-xs text-ink-400">${a.by} · ${fmtDMY(a.at)}</p></div>
           </li>`)}</ul>`,
         })}
       </div>

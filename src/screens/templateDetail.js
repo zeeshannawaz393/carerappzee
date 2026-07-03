@@ -1,4 +1,5 @@
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { page } from './_layout.js'
 import { icon } from '../icons.js'
 import { pageHeader, btn, badge, priorityBadge, statusBadge, cqcTag, sectionCard, defList, tabs, severityBadge } from '../components/ui.js'
@@ -73,7 +74,7 @@ export function renderTemplateDetail({ id }) {
         ${map(versions, (v, i) => html`<li class="flex items-start gap-4 p-4">
           <div class="flex flex-col items-center"><span class="w-9 h-9 rounded-full grid place-items-center text-xs font-bold ${i === 0 ? 'bg-success-500 text-white' : 'bg-ink-100 text-ink-500'}">${esc(v.version)}</span></div>
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">${statusBadge(v.status)}<span class="text-xs text-ink-400">${esc(v.date)}</span>${v.change === 'major' ? badge('Major', 'bg-danger-50 text-danger-600 ring-danger-100') : v.change === 'minor' ? badge('Minor', 'bg-info-50 text-info-600 ring-info-100') : ''}</div>
+            <div class="flex items-center gap-2 flex-wrap">${statusBadge(v.status)}<span class="text-xs text-ink-400">${esc(fmtDMY(v.date))}</span>${v.change === 'major' ? badge('Major', 'bg-danger-50 text-danger-600 ring-danger-100') : v.change === 'minor' ? badge('Minor', 'bg-info-50 text-info-600 ring-info-100') : ''}</div>
             <p class="text-sm text-ink-800 mt-1">${esc(v.reason)}</p>
             <p class="text-xs text-ink-500 mt-0.5">by ${esc(v.by)}</p>
           </div>

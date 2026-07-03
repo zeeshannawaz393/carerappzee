@@ -1,4 +1,5 @@
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { page } from './_layout.js'
 import { icon } from '../icons.js'
 import { pageHeader, btn, badge } from '../components/ui.js'
@@ -64,7 +65,7 @@ export function renderAudit() {
             ${map(LOG, (r) => {
               const automated = r.by === 'System' || r.role === 'Automated'
               return html`<tr ${dataAttrs(r)} x-show="show($el)">
-                <td class="whitespace-nowrap text-ink-500 font-mono text-xs">${esc(r.at)}</td>
+                <td class="whitespace-nowrap text-ink-500 font-mono text-xs">${esc(fmtDMY(r.at))}</td>
                 <td>${badge(r.entity, ENTITY_BADGE[r.entity] || 'bg-ink-100 text-ink-600 ring-ink-200')}</td>
                 <td class="font-medium text-ink-800">${esc(r.name)}</td>
                 <td class="text-ink-700">${esc(r.action)}</td>

@@ -192,7 +192,7 @@ export function renderTemplateWizard(params = {}) {
       ${fieldBlock('Detailed instruction', `<textarea rows="3" class="field px-3 py-2" placeholder="Step-by-step guidance, equipment, products and any agreed approach.">${esc(i.detailed || '')}</textarea>`)}
       ${fieldBlock('Do / do not', `<textarea rows="3" class="field px-3 py-2" placeholder="One item per line, e.g.\nDo offer choice of clothing\nDo not rush — allow the person to do what they can"></textarea>`)}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        ${fieldBlock('Communication & cultural preference', `<textarea rows="2" class="field px-3 py-2" placeholder="e.g. Prefers female carer; speak slowly; observes daily prayer at 7am."></textarea>`)}
+        ${fieldBlock('Communication & cultural preference', `<textarea rows="2" class="field px-3 py-2" placeholder="e.g. Prefers female carer; speak slowly; observes daily prayer at 07:00."></textarea>`)}
         ${fieldBlock('Dignity & privacy', `<textarea rows="2" class="field px-3 py-2" placeholder="e.g. Keep covered where possible; close curtains; explain each step.">${esc(i.dignity || '')}</textarea>`)}
       </div>
       ${fieldBlock('Escalation instruction', `<textarea rows="2" class="field px-3 py-2" placeholder="e.g. If skin is broken or red, do not proceed — photograph, record and call the office immediately.">${esc(i.escalation || '')}</textarea>`)}

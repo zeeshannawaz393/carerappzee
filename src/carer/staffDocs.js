@@ -1,5 +1,6 @@
 /** §29 (AC-29.4/5) — My documents: carer submits compliance docs; office verifies. */
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { STAFF_DOCS } from '../data/carer.js'
@@ -40,10 +41,10 @@ function docCard(doc) {
       <span class="badge bg-${s.tone}-50 text-${s.tone}-700 ring-${s.tone}-100 shrink-0">${esc(s.label)}</span>
     </div>
     ${doc.expiry
-      ? html`<p class="text-xs mt-2 flex items-center gap-1.5 ${doc.status === 'expiring' ? 'text-warning-700 font-medium' : 'text-ink-500'}">${icon('calendar', 'w-3.5 h-3.5')}Expires ${esc(doc.expiry)}</p>`
+      ? html`<p class="text-xs mt-2 flex items-center gap-1.5 ${doc.status === 'expiring' ? 'text-warning-700 font-medium' : 'text-ink-500'}">${icon('calendar', 'w-3.5 h-3.5')}Expires ${esc(fmtDMY(doc.expiry))}</p>`
       : ''}
     ${doc.status === 'verified' && doc.verifiedBy
-      ? html`<p class="text-xs mt-1.5 flex items-center gap-1.5 text-success-700">${icon('check-circle', 'w-3.5 h-3.5')}Verified by ${esc(doc.verifiedBy)}${doc.updated ? ' · ' + esc(doc.updated) : ''}</p>`
+      ? html`<p class="text-xs mt-1.5 flex items-center gap-1.5 text-success-700">${icon('check-circle', 'w-3.5 h-3.5')}Verified by ${esc(doc.verifiedBy)}${doc.updated ? ' · ' + esc(fmtDMY(doc.updated)) : ''}</p>`
       : ''}
     <div class="mt-3 flex justify-end">${docAction(doc)}</div>
   </div>`

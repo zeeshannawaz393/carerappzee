@@ -1,5 +1,6 @@
 /** §28 — Skills & competency: two tracks (e-learning completion + observed sign-off). */
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { SKILLS, SKILL_TO_COURSE, LEARNING_COURSES } from '../data/carer.js'
@@ -57,8 +58,8 @@ function observedRow(s) {
   let ic, tone, primary, secondary
   if (s.observed === 'signed-off') {
     ic = 'user-check'; tone = 'success'
-    primary = `Signed off by ${esc(s.signedBy)} · ${esc(s.signedDate)}`
-    secondary = s.expiry ? `Expires ${esc(s.expiry)}` : ''
+    primary = `Signed off by ${esc(s.signedBy)} · ${esc(fmtDMY(s.signedDate))}`
+    secondary = s.expiry ? `Expires ${esc(fmtDMY(s.expiry))}` : ''
   } else if (s.observed === 'pending') {
     ic = 'clock'; tone = 'warning'
     primary = 'Awaiting senior sign-off'

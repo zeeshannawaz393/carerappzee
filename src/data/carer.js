@@ -210,15 +210,15 @@ export const STAFF_DOCS = [
 export const CARER_PROFILE = {
   employeeId: 'RCL-0473',
   name: 'Aisha Khan',
-  dob: '18 Mar 1992',
+  dob: '18/03/1992',
   ni: 'QQ 12 34 56 C',
   phone: '07700 900431',
   email: 'aisha.khan@riverside-care.co.uk',
   address: '48 Bridge Road, Riverside, RV3 5PL',
-  startDate: '03 Nov 2023',
+  startDate: '03/11/2023',
   role: 'Care Worker',
   contract: 'Permanent · 36 hrs/week',
-  probation: 'Passed · Feb 2024',
+  probation: 'Passed · 02/2024',
   notice: '4 weeks',
   lineManager: 'Daniel Roy (Senior Carer)',
   homeBranch: 'Riverside — North',
@@ -227,18 +227,18 @@ export const CARER_PROFILE = {
   nextOfKin: { name: 'Sana Khan', relationship: 'Sister', phone: '07700 900876' },
   // Schedule 3 — full employment history incl. gaps explained.
   employmentHistory: [
-    { employer: 'Sunnyfield Care Home', role: 'Care Assistant', period: 'Jun 2019 – Oct 2023', note: 'Reference verified' },
-    { employer: 'Bright Futures Domiciliary', role: 'Support Worker', period: 'Sep 2017 – May 2019', note: 'Reference verified' },
-    { employer: 'Career break — full-time study (NVQ Health & Social Care)', role: '', period: 'Jan 2017 – Aug 2017', note: 'Gap explained' },
+    { employer: 'Sunnyfield Care Home', role: 'Care Assistant', period: '06/2019 – 10/2023', note: 'Reference verified' },
+    { employer: 'Bright Futures Domiciliary', role: 'Support Worker', period: '09/2017 – 05/2019', note: 'Reference verified' },
+    { employer: 'Career break — full-time study (NVQ Health & Social Care)', role: '', period: '01/2017 – 08/2017', note: 'Gap explained' },
   ],
   // Periodic clearances — CQC Reg 19 + Home Office. status: valid | due | overdue.
   checks: [
-    { name: 'Enhanced DBS', detail: 'Adults & children · DBS Update Service — auto-checked weekly', status: 'valid', due: 'Renew by 01 May 2027' },
+    { name: 'Enhanced DBS', detail: 'Adults & children · DBS Update Service — auto-checked weekly', status: 'valid', due: 'Renew by 01/05/2027' },
     { name: 'Right to work', detail: 'British citizen · passport verified online', status: 'valid', due: 'No re-check needed' },
     { name: 'References', detail: '2 satisfactory (Schedule 3, prior care roles)', status: 'valid', due: null },
-    { name: 'Health & fitness to work', detail: 'Annual self-declaration', status: 'due', due: 'Due 30 Sep 2026' },
-    { name: 'Supervision (1:1)', detail: 'With line manager', status: 'valid', due: 'Next 12 Aug 2026' },
-    { name: 'Annual appraisal', detail: 'Performance & development review', status: 'valid', due: 'Next 03 Nov 2026' },
+    { name: 'Health & fitness to work', detail: 'Annual self-declaration', status: 'due', due: 'Due 30/09/2026' },
+    { name: 'Supervision (1:1)', detail: 'With line manager', status: 'valid', due: 'Next 12/08/2026' },
+    { name: 'Annual appraisal', detail: 'Performance & development review', status: 'valid', due: 'Next 03/11/2026' },
   ],
 }
 
@@ -981,7 +981,7 @@ export const BODY_REGIONS = [
 /* ---------------------------------------------------------- Care context (P2) */
 export const CARE_PLANS = {
   'su-mary': {
-    review: '2026-08-01', version: 'v4', changedSince: 'Hydration target increased to 1500ml/day and afternoon reassurance routine added (15 Jun 2026).',
+    review: '2026-08-01', version: 'v4', changedSince: 'Hydration target increased to 1500ml/day and afternoon reassurance routine added (15/06/2026).',
     sections: [
       { domain: 'Personal Hygiene', icon: 'bath', goal: 'Maintain dignity and skin health with daily support.', how: 'Prefers to wash at the sink and choose her own clothes. Female carer for personal care.', actions: ['Support morning wash & dressing', 'Oral care morning & night', 'Encourage independence with buttons'], risks: ['Falls risk'] },
       { domain: 'Nutrition & Hydration', icon: 'droplet', goal: 'Maintain hydration ≥1500ml/day and adequate nutrition.', how: 'Tea with milk (no sugar) in the morning, orange squash at lunch. Soft diet.', actions: ['Offer drink every visit, record ml', 'Prepare lunch, record intake', 'Leave drink within reach at bedtime'], risks: ['Dehydration risk', 'Malnutrition risk'] },
@@ -1014,19 +1014,19 @@ export const RISK_ASSESSMENTS = {
 
 export const MED_HISTORY = {
   'su-mary': [
-    { date: '29 Jun', time: '08:05', name: 'Metformin 500mg', outcome: 'Given', by: 'A. Khan' },
-    { date: '29 Jun', time: '08:05', name: 'Amlodipine 5mg', outcome: 'Given', by: 'A. Khan' },
-    { date: '29 Jun', time: '14:20', name: 'Paracetamol 1g (PRN)', outcome: 'Given', by: 'A. Khan' },
-    { date: '29 Jun', time: '21:10', name: 'Insulin (Lantus)', outcome: 'Given', by: 'D. Roy' },
-    { date: '28 Jun', time: '08:00', name: 'Metformin 500mg', outcome: 'Refused', by: 'A. Khan' },
-    { date: '28 Jun', time: '21:05', name: 'Insulin (Lantus)', outcome: 'Given', by: 'D. Roy' },
-    { date: '27 Jun', time: '08:10', name: 'Metformin 500mg', outcome: 'Given', by: 'D. Roy' },
+    { date: '29/06/2026', time: '08:05', name: 'Metformin 500mg', outcome: 'Given', by: 'A. Khan' },
+    { date: '29/06/2026', time: '08:05', name: 'Amlodipine 5mg', outcome: 'Given', by: 'A. Khan' },
+    { date: '29/06/2026', time: '14:20', name: 'Paracetamol 1g (PRN)', outcome: 'Given', by: 'A. Khan' },
+    { date: '29/06/2026', time: '21:10', name: 'Insulin (Lantus)', outcome: 'Given', by: 'D. Roy' },
+    { date: '28/06/2026', time: '08:00', name: 'Metformin 500mg', outcome: 'Refused', by: 'A. Khan' },
+    { date: '28/06/2026', time: '21:05', name: 'Insulin (Lantus)', outcome: 'Given', by: 'D. Roy' },
+    { date: '27/06/2026', time: '08:10', name: 'Metformin 500mg', outcome: 'Given', by: 'D. Roy' },
   ],
   'su-doris': [
-    { date: '29 Jun', time: '08:20', name: 'Furosemide 40mg', outcome: 'Given', by: 'P. Shah' },
-    { date: '29 Jun', time: '08:20', name: 'Lansoprazole 30mg', outcome: 'Given', by: 'P. Shah' },
+    { date: '29/06/2026', time: '08:20', name: 'Furosemide 40mg', outcome: 'Given', by: 'P. Shah' },
+    { date: '29/06/2026', time: '08:20', name: 'Lansoprazole 30mg', outcome: 'Given', by: 'P. Shah' },
   ],
-  'su-george': [{ date: '29 Jun', time: '08:40', name: 'Salbutamol inhaler', outcome: 'Given', by: 'A. Khan' }],
+  'su-george': [{ date: '29/06/2026', time: '08:40', name: 'Salbutamol inhaler', outcome: 'Given', by: 'A. Khan' }],
 }
 
 export const OBS_TRENDS = {
@@ -1040,11 +1040,11 @@ export const OBS_TRENDS = {
 
 export const VISIT_HISTORY = {
   'su-mary': [
-    { date: '29 Jun', visit: 'Bedtime', carer: 'D. Roy', status: 'Completed' },
-    { date: '29 Jun', visit: 'Tea', carer: 'D. Roy', status: 'Completed' },
-    { date: '29 Jun', visit: 'Lunch', carer: 'A. Khan', status: 'Completed' },
-    { date: '29 Jun', visit: 'Morning', carer: 'A. Khan', status: 'Completed' },
-    { date: '28 Jun', visit: 'Morning', carer: 'A. Khan', status: 'Med refused' },
+    { date: '29/06/2026', visit: 'Bedtime', carer: 'D. Roy', status: 'Completed' },
+    { date: '29/06/2026', visit: 'Tea', carer: 'D. Roy', status: 'Completed' },
+    { date: '29/06/2026', visit: 'Lunch', carer: 'A. Khan', status: 'Completed' },
+    { date: '29/06/2026', visit: 'Morning', carer: 'A. Khan', status: 'Completed' },
+    { date: '28/06/2026', visit: 'Morning', carer: 'A. Khan', status: 'Med refused' },
   ],
 }
 

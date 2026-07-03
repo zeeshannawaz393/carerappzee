@@ -1,5 +1,6 @@
 /** P2 — client care-context screens: care plan, medications, history, documents. */
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { emptyMobile } from './states.js'
@@ -26,7 +27,7 @@ export function renderCarePlan({ id }) {
 
   const acked = carerStore.planAcked(id, plan.version)
   const inner = html`
-    ${flowHeader({ title: 'Care plan', subtitle: `${esc(su.name)} · ${plan.version} · review ${plan.review}`, back: `#/carer/clients/${id}` })}
+    ${flowHeader({ title: 'Care plan', subtitle: `${esc(su.name)} · ${plan.version} · review ${esc(fmtDMY(plan.review))}`, back: `#/carer/clients/${id}` })}
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       ${plan.changedSince && !acked ? html`<div class="rounded-xl bg-warning-50 ring-1 ring-warning-100 p-4">
         <p class="text-xs font-semibold text-warning-700 uppercase tracking-wide mb-1 flex items-center gap-1.5">${icon('alert', 'w-3.5 h-3.5')}Plan changed since your last visit (${esc(plan.version)})</p>
@@ -52,7 +53,7 @@ export function renderCarePlan({ id }) {
           ${map(risks, (r) => html`<div class="rounded-lg ring-1 ring-ink-200 p-3">
             <div class="flex items-center justify-between"><p class="text-sm font-semibold text-ink-900">${esc(r.name)}</p><span class="badge ${riskTone(r.level)}">${esc(r.level)}</span></div>
             <div class="flex flex-wrap gap-1.5 mt-2">${r.controls.map((c) => `<span class="badge bg-ink-50 text-ink-600 ring-ink-200">${esc(c)}</span>`).join('')}</div>
-            <p class="text-xs text-ink-500 mt-1.5">Review ${esc(r.review)}</p>
+            <p class="text-xs text-ink-500 mt-1.5">Review ${esc(fmtDMY(r.review))}</p>
           </div>`)}
         </div>
       </div>
@@ -95,7 +96,7 @@ export function renderMedProfile({ id }) {
         <div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">
           ${hist.length ? map(hist, (h) => html`<div class="flex items-center gap-3 p-4">
             <span class="w-7 h-7 rounded-md grid place-items-center shrink-0 ${h.outcome === 'Given' ? 'bg-success-50 text-success-600' : 'bg-danger-50 text-danger-600'}">${icon(h.outcome === 'Given' ? 'check' : 'refuse', 'w-3.5 h-3.5')}</span>
-            <div class="flex-1 min-w-0"><p class="text-sm font-medium text-ink-800 truncate">${esc(h.name)}</p><p class="text-xs text-ink-500">${esc(h.date)} ${esc(h.time)} · ${esc(h.by)}</p></div>
+            <div class="flex-1 min-w-0"><p class="text-sm font-medium text-ink-800 truncate">${esc(h.name)}</p><p class="text-xs text-ink-500">${esc(fmtDMY(h.date))} ${esc(h.time)} · ${esc(h.by)}</p></div>
             <span class="badge ${h.outcome === 'Given' ? 'bg-success-50 text-success-700 ring-success-100' : 'bg-danger-50 text-danger-700 ring-danger-100'}">${esc(h.outcome)}</span>
           </div>`) : '<p class="text-sm text-ink-500 text-center py-4">No history yet.</p>'}
         </div>
@@ -126,7 +127,7 @@ export function renderHistory({ id }) {
         <div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">
           ${visits.length ? map(visits, (v) => html`<div class="flex items-center gap-3 p-4">
             <span class="w-7 h-7 rounded-md grid place-items-center shrink-0 ${v.status === 'Completed' ? 'bg-success-50 text-success-600' : 'bg-warning-50 text-warning-600'}">${icon(v.status === 'Completed' ? 'check' : 'alert', 'w-3.5 h-3.5')}</span>
-            <div class="flex-1 min-w-0"><p class="text-sm font-medium text-ink-800">${esc(v.visit)} visit</p><p class="text-xs text-ink-500">${esc(v.date)} · ${esc(v.carer)}</p></div>
+            <div class="flex-1 min-w-0"><p class="text-sm font-medium text-ink-800">${esc(v.visit)} visit</p><p class="text-xs text-ink-500">${esc(fmtDMY(v.date))} · ${esc(v.carer)}</p></div>
             <span class="text-xs ${v.status === 'Completed' ? 'text-success-600' : 'text-warning-600'} font-medium">${esc(v.status)}</span>
           </div>`) : '<p class="text-sm text-ink-500 text-center py-4">No visit history.</p>'}
         </div>
@@ -160,8 +161,8 @@ export function renderCapacity({ id }) {
           ${map(cap.decisions, (d) => html`<div class="card p-4">
             <div class="flex items-center justify-between gap-2"><p class="text-sm font-semibold text-ink-900">${esc(d.decision)}</p><span class="badge ${capTone(d.capacity)}">${esc(d.capacity)}</span></div>
             <dl class="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 text-xs">
-              <div><dt class="text-ink-500">Assessed</dt><dd class="text-ink-700">${esc(d.assessed)}</dd></div>
-              <div><dt class="text-ink-500">Review</dt><dd class="text-ink-700">${esc(d.review)}</dd></div>
+              <div><dt class="text-ink-500">Assessed</dt><dd class="text-ink-700">${esc(fmtDMY(d.assessed))}</dd></div>
+              <div><dt class="text-ink-500">Review</dt><dd class="text-ink-700">${esc(fmtDMY(d.review))}</dd></div>
               <div class="col-span-2"><dt class="text-ink-500">Assessor</dt><dd class="text-ink-700">${esc(d.assessor)}</dd></div>
             </dl>
             ${d.fluctuates ? `<div class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-warning-50 text-warning-700 ring-1 ring-warning-100 px-2 py-1 text-xs font-semibold">${icon('clock', 'w-3.5 h-3.5')}Capacity fluctuates — reassess at the time</div>` : ''}
@@ -187,7 +188,7 @@ export function renderDocuments({ id }) {
       <div class="rounded-xl bg-teal-50 ring-1 ring-teal-100 p-3 text-sm text-teal-800 flex items-center gap-2">${icon('wifi', 'w-4 h-4')}These documents are cached for offline access at the point of care.</div>
       ${docs.length ? html`<div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">${map(docs, (d) => html`<div class="p-4 flex items-center gap-3">
         <span class="w-10 h-10 rounded-xl grid place-items-center ${d.critical ? 'bg-danger-50 text-danger-600' : 'bg-ink-100 text-ink-600'}">${icon(d.icon || 'file-check', 'w-5 h-5')}</span>
-        <div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(d.name)}${d.critical ? ' ⚠' : ''}</p><p class="text-xs text-ink-500">${esc(d.type)} · ${esc(d.date)}${d.offline ? ' · offline' : ''}</p></div>
+        <div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(d.name)}${d.critical ? ' ⚠' : ''}</p><p class="text-xs text-ink-500">${esc(d.type)} · ${esc(fmtDMY(d.date))}${d.offline ? ' · offline' : ''}</p></div>
         <button onclick="window.__notify('Opening ${esc(d.name)}…','info')" class="w-8 h-8 rounded-lg bg-ink-50 text-ink-500 grid place-items-center">${icon('eye', 'w-4 h-4')}</button>
         <a href="#/carer/export" class="w-8 h-8 rounded-lg bg-ink-50 text-ink-500 grid place-items-center">${icon('link', 'w-4 h-4')}</a>
       </div>`)}</div>` : emptyMobile({ icon: 'file-check', title: 'No documents', body: 'Care plan and consent documents will appear here.' })}
@@ -218,7 +219,7 @@ export function renderAssessments({ id }) {
         <div class="space-y-2">
           ${map(list, (a) => html`<div class="card p-4">
             <div class="flex items-center justify-between gap-2"><p class="text-sm font-semibold text-ink-900">${esc(a.name)}</p><span class="badge bg-ink-50 text-ink-600 ring-ink-200">${esc(a.score)}</span></div>
-            <p class="text-xs text-ink-500 mt-0.5">Updated ${esc(a.updated)} · ${esc(a.by)}</p>
+            <p class="text-xs text-ink-500 mt-0.5">Updated ${esc(fmtDMY(a.updated))} · ${esc(a.by)}</p>
             <div class="mt-2 flex gap-2">
               ${a.carerEditable ? `<button onclick="window.__notify('Assessment update saved — sent for clinical review','success')" class="btn btn-secondary btn-sm">${icon('check', 'w-3.5 h-3.5')}Update reading</button>` : `<span class="text-xs text-ink-500 self-center">${icon('shield', 'w-3.5 h-3.5')}Clinician-owned — read only</span>`}
               <button onclick="window.__notify('Flagged for clinical review','warning')" class="btn btn-ghost btn-sm">${icon('flag', 'w-3.5 h-3.5')}Flag for review</button>

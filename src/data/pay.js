@@ -11,7 +11,7 @@
 export const NLW = 11.44 // National Living Wage (23+), £/hr — the legal floor
 export const PAY_RATES = { contact: 12.0, travel: 12.0, mileage: 0.45, weekendUplift: 0.15, night: 12.9 }
 
-export const PAY_PERIOD = { label: 'July 2026', frequency: 'Monthly', payday: '1 Aug 2026', range: '1–31 Jul' }
+export const PAY_PERIOD = { label: 'July 2026', frequency: 'Monthly', payday: '1 Aug 2026', range: '01/07 – 31/07' }
 
 /** Running totals for the current (in-progress) pay period. */
 export const THIS_PERIOD = {
@@ -36,7 +36,7 @@ export const THIS_PERIOD = {
 export const YTD = { gross: 5707.5, tax: 517.94, ni: 206.2, pension: 285.39, holidayTakenDays: 6.5, taxCode: '1257L' }
 
 export const HMRC_MILEAGE = 0.45 // HMRC Approved Mileage Allowance Payment (first 10,000 mi) — the tax-free ceiling
-export const HOLIDAY = { entitlementDays: 28, takenDays: 11.5, remainingDays: 16.5, accrualPct: 12.07, nextBooked: '10–12 Aug 2026' }
+export const HOLIDAY = { entitlementDays: 28, takenDays: 11.5, remainingDays: 16.5, accrualPct: 12.07, nextBooked: '10–12/08/2026' }
 export const PENSION = { provider: 'NEST', potValue: 4820.5, employeePct: 5, employerPct: 3, employeeYtd: 285.39, employerYtd: 171.23 }
 
 export const PAYSLIPS = [

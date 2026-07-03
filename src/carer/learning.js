@@ -2,6 +2,7 @@
  *  (lesson → knowledge check → completion) persisted to carerStore, plus the
  *  just-in-time client-condition micro-lesson. */
 import { html, esc, map } from '../lib/dom.js'
+import { fmtDMY } from '../lib/dates.js'
 import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { LEARNING_COURSES, LEARNING_CONTENT, CARE_CERT_STANDARDS, ROTA, jitCourseForSU, courseRefreshStatus, courseExpiry, DEMO_TODAY } from '../data/carer.js'
@@ -29,13 +30,9 @@ function certRef(c) {
   return 'CPD-' + String(c.id).toUpperCase()
 }
 
-/** Format an ISO date (YYYY-MM-DD) as e.g. "3 Jul 2026". */
-const CERT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+/** Format an ISO date (YYYY-MM-DD) as dd/mm/yyyy. */
 function fmtDate(iso) {
-  if (!iso) return '—'
-  const d = new Date(iso + 'T00:00:00Z')
-  if (isNaN(d)) return esc(iso)
-  return `${d.getUTCDate()} ${CERT_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+  return fmtDMY(iso)
 }
 
 /** True when a course has a multi-module structure (the enterprise player). */

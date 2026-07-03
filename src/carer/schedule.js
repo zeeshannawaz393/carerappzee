@@ -3,10 +3,68 @@ import { html, esc, map } from '../lib/dom.js'
 import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { carerStore } from '../lib/carerStore.js'
-import { PARAMS, ROTA } from '../data/carer.js'
+import { PARAMS, ROTA, DEMO_TODAY } from '../data/carer.js'
 import { getServiceUser } from '../data/index.js'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/* ------------------------------------------------ Scrollable multi-month calendar */
+const MONTHS_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const DOW_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] // getUTCDay() index
+
+/** Build a flat list of dated cells from `startIso` for `days` days. */
+function buildCalendar(startIso, days) {
+  const out = []
+  const d = new Date(startIso + 'T00:00:00Z')
+  for (let i = 0; i < days; i++) {
+    const iso = d.toISOString().slice(0, 10)
+    out.push({
+      iso,
+      dow: DOW_ABBR[d.getUTCDay()],
+      dom: d.getUTCDate(),
+      month: MONTHS_ABBR[d.getUTCMonth()],
+      year: d.getUTCFullYear(),
+      isToday: iso === DEMO_TODAY,
+    })
+    d.setUTCDate(d.getUTCDate() + 1)
+  }
+  return out
+}
+
+/* Two months either side of the demo day, so the strip scrolls across months. */
+const CAL = buildCalendar('2026-06-01', 92) // Jun 1 → end of Aug 2026
+const LABELS = Object.fromEntries(CAL.map((c) => {
+  const [y, m, d] = c.iso.split('-') // dd/mm/yyyy from the ISO date
+  return [c.iso, `${c.dow} ${d}/${m}/${y}`]
+}))
+/* Single-quoted so it can live inside a double-quoted x-data attribute (values are date labels — no apostrophes). */
+const LABELS_LITERAL = JSON.stringify(LABELS).replace(/"/g, "'")
+
+/** Minutes between the two clock times in a '07:30 – 08:15' range string. */
+function durMins(t) {
+  const parts = String(t).split(/\s*[–-]\s*/)
+  const toM = (s) => {
+    const [h, m] = s.trim().split(':').map(Number)
+    return h * 60 + m
+  }
+  return parts.length === 2 ? Math.max(0, toM(parts[1]) - toM(parts[0])) : 0
+}
+
+/** Per-weekday totals for the daywise summary card. Tue reuses today's live rota. */
+function dayStats(dow) {
+  const rows = dow === 'Tue' ? ROTA : (MOCK_DAYS[dow] || [])
+  const visits = rows.length
+  const mins = rows.reduce((s, r) => s + durMins(r.time), 0)
+  const miles = visits ? Math.round(visits * 4.2) : 0
+  return { visits, mins, miles }
+}
+
+/** Format minutes as '4h 30m' / '6h' / '0h'. */
+function fmtHours(mins) {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m ? `${h}h ${m}m` : `${h}h`
+}
 
 const suTone = (color) => ({
   warning: 'bg-warning-100 text-warning-700',
@@ -94,31 +152,41 @@ export function renderSchedule() {
   const stat = (val, label) => html`<div class="text-center"><p class="text-xl font-bold text-ink-900">${val}</p><p class="text-[11px] text-ink-400">${label}</p></div>`
 
   const inner = html`
-    ${flowHeader({ title: 'Schedule', subtitle: 'Week of 29 Jun – 5 Jul', back: '#/carer' })}
-    <div class="flex-1 overflow-y-auto p-4 space-y-4" x-data="{ day:'Tue' }">
-      <!-- week strip -->
-      <div class="grid grid-cols-7 gap-1.5">
-        ${map(DAYS, (d, i) => html`<button @click="day='${d}'" :class="day==='${d}' ? 'bg-primary-600 text-white ring-primary-600' : 'bg-surface text-ink-600 ring-ink-200'" class="rounded-xl ring-1 py-2 flex flex-col items-center gap-0.5 active:scale-[.97]">
-          <span class="text-[10px] font-medium uppercase tracking-wide opacity-80">${d}</span>
-          <span class="text-base font-bold leading-none">${29 + i > 30 ? 29 + i - 30 : 29 + i}</span>
-          ${d === 'Tue' ? html`<span :class="day==='Tue' ? 'bg-white' : 'bg-primary-500'" class="w-1 h-1 rounded-full mt-0.5"></span>` : '<span class="w-1 h-1 mt-0.5"></span>'}
-        </button>`)}
-      </div>
-      <p class="text-[11px] text-ink-400 -mt-1 flex items-center gap-1">${icon('info', 'w-3.5 h-3.5')}<span x-text="day==='Tue' ? 'Today · Tue 30 Jun' : day + ' — planned'"></span></p>
-
-      <!-- week totals -->
-      <div class="card p-4">
-        <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-3">This week</p>
-        <div class="grid grid-cols-3 gap-2">
-          ${stat('34', 'Visits')}
-          ${stat('41h', 'Planned hours')}
-          ${stat('126', 'Miles')}
+    ${flowHeader({ title: 'Schedule', subtitle: 'Tap any date — swipe to other months', back: '#/carer' })}
+    <div class="flex-1 overflow-y-auto p-4 space-y-4" x-data="{ sel:'${DEMO_TODAY}', day:'Tue', labels: ${LABELS_LITERAL} }" x-init="$nextTick(() => $refs.todayPill && $refs.todayPill.scrollIntoView({ inline:'center', block:'nearest' }))">
+      <!-- scrollable multi-month date strip -->
+      <div class="overflow-x-auto -mx-4 px-4 pb-1 [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none" x-ref="strip">
+        <div class="flex items-stretch gap-1.5 w-max">
+          ${map(CAL, (c, i) => {
+            const divider = (i === 0 || c.dom === 1)
+              ? html`<div class="shrink-0 self-center px-1"><span class="text-[10px] font-bold uppercase tracking-wide text-primary-500">${c.month}</span></div>`
+              : ''
+            return divider + html`<button @click="sel='${c.iso}'; day='${c.dow}'" ${c.isToday ? 'x-ref="todayPill"' : ''} :class="sel==='${c.iso}' ? 'bg-primary-600 text-white ring-primary-600' : 'bg-surface text-ink-600 ring-ink-200'" class="shrink-0 w-12 rounded-xl ring-1 py-2 flex flex-col items-center gap-0.5 active:scale-[.97]">
+              <span class="text-[10px] font-medium uppercase tracking-wide opacity-80">${c.dow}</span>
+              <span class="text-base font-bold leading-none">${c.dom}</span>
+              ${c.isToday ? html`<span :class="sel==='${c.iso}' ? 'bg-white' : 'bg-primary-500'" class="w-1 h-1 rounded-full mt-0.5"></span>` : '<span class="w-1 h-1 mt-0.5"></span>'}
+            </button>`
+          })}
         </div>
+      </div>
+      <p class="text-[11px] text-ink-400 -mt-1 flex items-center gap-1">${icon('info', 'w-3.5 h-3.5')}<span x-text="(sel==='${DEMO_TODAY}' ? 'Today · ' : '') + labels[sel]"></span></p>
+
+      <!-- daywise totals -->
+      <div class="card p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-3"><span x-text="labels[sel]"></span> · totals</p>
+        ${map(DAYS, (d) => {
+          const s = dayStats(d)
+          return html`<div x-show="day==='${d}'" x-cloak class="grid grid-cols-3 gap-2">
+            ${stat(String(s.visits), 'Visits')}
+            ${stat(fmtHours(s.mins), 'Planned hours')}
+            ${stat(String(s.miles), 'Miles')}
+          </div>`
+        })}
       </div>
 
       <!-- per-day agenda -->
       <div>
-        <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2" x-text="(day==='Tue' ? 'Today' : day) + '’s visits'"></p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2" x-text="(sel==='${DEMO_TODAY}' ? 'Today' : labels[sel]) + ' · visits'"></p>
         ${map(DAYS, (d) => html`<div x-show="day==='${d}'" x-cloak class="space-y-2">${dayAgenda(d)}</div>`)}
       </div>
 
