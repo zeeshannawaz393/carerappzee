@@ -1150,10 +1150,10 @@ export function renderCarerVisit({ visit }) {
                 <div x-show="activeTask.why" class="rounded-xl bg-teal-50 ring-1 ring-teal-100 p-3.5"><p class="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-1">Why</p><p class="text-sm text-teal-900" x-text="activeTask.why"></p></div>
                 ${errorBox}
                 <div x-show="!activeTask.isMed">
-                  <p class="label">Outcome *</p>
-                  <div class="grid grid-cols-4 gap-1.5"><template x-for="o in ['Completed','Partial','Refused','Unable']" :key="o"><button type="button" @click="outcome=o" :class="outcome===o ? (o==='Completed' ? 'bg-success-600 text-white ring-success-600' : o==='Partial' ? 'bg-warning-500 text-white ring-warning-500' : 'bg-danger-500 text-white ring-danger-500') : 'bg-white text-ink-600 ring-ink-200'" class="h-10 rounded-lg ring-1 text-xs font-semibold" x-text="o"></button></template></div>
+                  <p class="text-[15px] font-semibold text-ink-900 mb-2.5">How did it go?</p>
+                  <div class="rounded-2xl ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden"><template x-for="o in ['Completed','Partial','Refused','Unable']" :key="o"><button type="button" @click="outcome=o" :class="outcome===o ? 'bg-primary-50' : 'bg-surface'" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-ink-50"><span class="w-3 h-3 rounded-full shrink-0 ring-1 ring-black/5" :class="o==='Completed' ? 'bg-success-500' : o==='Partial' ? 'bg-warning-500' : 'bg-danger-500'"></span><span class="flex-1 text-sm font-medium text-ink-800" x-text="o"></span><span x-show="outcome===o" x-cloak class="text-primary-600 shrink-0">${icon('check', 'w-4 h-4')}</span></button></template></div>
                 </div>
-                <p class="text-xs font-semibold text-ink-400 uppercase tracking-wide pt-1">Record</p>
+                <p class="section-title pt-1">Record</p>
                 ${fieldControls('activeTask.fields')}
               </div>
               <div class="p-4 border-t border-ink-200 bg-surface shrink-0"><button @click="saveTask()" class="btn btn-primary btn-lg w-full">${icon('check', 'w-5 h-5')}Save record</button></div>
@@ -1251,7 +1251,7 @@ export function renderCarerVisit({ visit }) {
             <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-2 sheet-body">
               <div class="rounded-xl bg-danger-50 ring-1 ring-danger-100 p-3 text-sm text-danger-800 flex items-center gap-2">${icon('shield', 'w-4 h-4')}Launch a closed-loop protocol. Each step is recorded to closure.</div>
               <template x-for="p in PROTOCOL_LIST" :key="p.id">
-                <button @click="launchProtocol(p.id)" class="w-full text-left card p-3.5 flex items-center gap-3 active:scale-[.99]"><span class="w-9 h-9 rounded-lg bg-danger-50 text-danger-600 grid place-items-center">${icon('alert', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900" x-text="p.name"></p><p class="text-xs text-ink-400" x-text="p.trigger + ' · ' + p.version"></p></div>${icon('chevron-right', 'w-4 h-4 text-ink-300')}</button>
+                <button @click="launchProtocol(p.id)" class="w-full text-left card p-4 flex items-center gap-3 active:scale-[.99]"><span class="w-9 h-9 rounded-lg bg-danger-50 text-danger-600 grid place-items-center">${icon('alert', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900" x-text="p.name"></p><p class="text-xs font-medium text-ink-600 truncate" x-text="p.trigger"></p><p class="text-[11px] text-ink-400" x-text="p.version"></p></div>${icon('chevron-right', 'w-4 h-4 text-ink-300')}</button>
               </template>
             </div>
           </div>
@@ -1270,15 +1270,15 @@ export function renderCarerVisit({ visit }) {
                 <p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Step <span x-text="protoStep+1"></span> of <span x-text="activeProtocol.steps.length"></span></p>
                 <p class="text-base font-semibold text-ink-900" x-text="protoCurrent.title"></p>
                 <template x-if="protoCurrent.type==='action'">
-                  <div class="space-y-2"><template x-for="(it,i) in protoCurrent.items" :key="i"><button @click="protoMark('a'+i)" :class="protoLog['a'+i] ? 'ring-success-300 bg-success-50' : 'ring-ink-200'" class="w-full flex items-center gap-2.5 p-3 rounded-lg ring-1 text-left"><span class="w-5 h-5 rounded grid place-items-center shrink-0" :class="protoLog['a'+i] ? 'bg-success-600 text-white' : 'ring-1 ring-ink-300'"><span x-show="protoLog['a'+i]">${icon('check', 'w-3.5 h-3.5')}</span></span><span class="text-sm text-ink-800" x-text="it"></span></button></template></div>
+                  <div class="space-y-2"><template x-for="(it,i) in protoCurrent.items" :key="i"><button @click="protoMark('a'+i)" :class="protoLog['a'+i] ? 'ring-2 ring-primary-500 bg-primary-50' : 'ring-1 ring-ink-200'" class="w-full flex items-center gap-2.5 p-3 rounded-lg text-left"><span class="w-5 h-5 rounded grid place-items-center shrink-0" :class="protoLog['a'+i] ? 'text-primary-600' : 'ring-1 ring-ink-300'"><span x-show="protoLog['a'+i]">${icon('check', 'w-3.5 h-3.5')}</span></span><span class="text-sm text-ink-800" x-text="it"></span></button></template></div>
                 </template>
                 <template x-if="protoCurrent.type==='contact'">
-                  <div class="space-y-2"><template x-for="o in protoCurrent.options" :key="o.label"><button @click="protoContactPick(o)" :class="protoContact===o.label ? 'ring-2 ring-primary-400' : 'ring-ink-200'" class="w-full flex items-center gap-3 p-3 rounded-lg ring-1"><span class="w-9 h-9 rounded-lg grid place-items-center" :class="o.tone==='danger'?'bg-danger-100 text-danger-700':o.tone==='warning'?'bg-warning-100 text-warning-700':'bg-primary-100 text-primary-700'">${icon('bell', 'w-4.5 h-4.5')}</span><div class="flex-1 text-left"><p class="text-sm font-semibold text-ink-900" x-text="o.label"></p><p class="text-xs text-ink-400" x-text="o.num"></p></div><span x-show="protoContact===o.label" class="text-success-600">${icon('check-circle', 'w-5 h-5')}</span></button></template></div>
+                  <div class="space-y-2"><template x-for="o in protoCurrent.options" :key="o.label"><button @click="protoContactPick(o)" :class="protoContact===o.label ? 'ring-2 ring-primary-500 bg-primary-50' : 'ring-1 ring-ink-200'" class="w-full flex items-center gap-3 p-3 rounded-lg"><span class="w-9 h-9 rounded-lg grid place-items-center" :class="o.tone==='danger'?'bg-danger-100 text-danger-700':o.tone==='warning'?'bg-warning-100 text-warning-700':'bg-primary-100 text-primary-700'">${icon('bell', 'w-4.5 h-4.5')}</span><div class="flex-1 text-left"><p class="text-sm font-semibold text-ink-900" x-text="o.label"></p><p class="text-xs text-ink-400" x-text="o.num"></p></div><span x-show="protoContact===o.label" class="text-primary-600">${icon('check-circle', 'w-5 h-5')}</span></button></template></div>
                 </template>
                 <template x-if="protoCurrent.type==='advice'"><textarea x-model="protoAdvice" rows="3" class="field px-3 py-2" :placeholder="protoCurrent.placeholder"></textarea></template>
                 <template x-if="protoCurrent.type==='repeatObs'"><div class="rounded-xl bg-primary-50 ring-1 ring-primary-100 p-3.5"><p class="text-sm text-primary-800" x-text="protoCurrent.detail"></p><label class="flex items-center gap-2 mt-2 text-sm text-primary-800"><input type="checkbox" x-model="protoLog.repeat" class="w-4 h-4 rounded text-primary-600" />Marked to repeat & monitor</label></div></template>
                 <template x-if="protoCurrent.type==='acknowledge'"><label class="flex items-start gap-2.5 p-3 rounded-lg ring-1 ring-ink-200"><input type="checkbox" x-model="protoLog.ack" class="w-5 h-5 rounded text-primary-600 mt-0.5" /><span class="text-sm text-ink-700" x-text="protoCurrent.detail"></span></label></template>
-                <template x-if="protoCurrent.type==='closure'"><div class="space-y-2"><template x-for="o in protoCurrent.options" :key="o"><button @click="protoOutcome=o" :class="protoOutcome===o ? 'bg-primary-600 text-white ring-primary-600' : 'bg-white text-ink-700 ring-ink-200'" class="w-full p-3 rounded-lg ring-1 text-left text-sm font-semibold" x-text="o"></button></template></div></template>
+                <template x-if="protoCurrent.type==='closure'"><div class="rounded-2xl ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden"><template x-for="o in protoCurrent.options" :key="o"><button @click="protoOutcome=o" :class="protoOutcome===o ? 'ring-2 ring-primary-500 bg-primary-50' : 'bg-surface'" class="w-full flex items-center gap-3 px-3.5 py-3 text-left"><span class="flex-1 text-sm font-medium text-ink-800" x-text="o"></span><span x-show="protoOutcome===o" class="text-primary-600 shrink-0">${icon('check', 'w-4 h-4')}</span></button></template></div></template>
               </div>
               <div class="p-4 border-t border-ink-200 bg-surface shrink-0">
                 <template x-if="protoCurrent.type!=='closure'"><button @click="protoNext()" :disabled="!protoCanAdvance" :class="protoCanAdvance ? 'btn-danger' : 'btn-secondary opacity-60'" class="btn btn-lg w-full">Next step ${icon('arrow-right', 'w-4 h-4')}</button></template>
@@ -1293,7 +1293,7 @@ export function renderCarerVisit({ visit }) {
           <template x-if="activeObs">
             <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
               ${recordSheetHeader('activeObs.name', 'activeObs.group')}
-              <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">${errorBox}${fieldControls('activeObs.fields')}</div>
+              <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body"><div class="card p-4"><p class="text-[15px] font-semibold text-ink-900" x-text="activeObs.name"></p><p class="text-[13px] text-ink-500 mt-0.5" x-text="activeObs.group"></p></div>${errorBox}${fieldControls('activeObs.fields')}</div>
               <div class="p-4 border-t border-ink-200 bg-surface shrink-0"><button @click="saveObs()" class="btn btn-primary btn-lg w-full">${icon('check', 'w-5 h-5')}Save observation</button></div>
             </div>
           </template>
@@ -1307,11 +1307,12 @@ export function renderCarerVisit({ visit }) {
               <span x-effect="persistDraft()" class="hidden"></span>
               <div class="rounded-lg bg-ink-50 ring-1 ring-ink-200 p-2 flex items-center gap-2 text-xs text-ink-500">${icon('check', 'w-3.5 h-3.5 text-success-600')}Draft auto-saves as you type — safe to close and resume.</div>
               ${errorBox}
-              <div><p class="label">Incident type *</p><div class="grid grid-cols-3 gap-2">
+              <div><p class="text-[15px] font-semibold text-ink-900 mb-2.5">Incident type</p><div class="grid grid-cols-3 gap-2">
                 <template x-for="it in incidentTypes" :key="it.id"><button type="button" @click="pickIncidentType(it)" :class="inc.typeId===it.id ? 'ring-danger-400 bg-danger-50' : 'ring-ink-200'" class="card p-2.5 flex flex-col items-center gap-1.5 text-center ring-1"><span class="w-7 h-7 rounded-lg bg-ink-50 text-ink-500 grid place-items-center" x-html="window.__obsIcon(it.icon)"></span><span class="text-xs font-medium text-ink-700 leading-tight" x-text="it.name"></span></button></template>
               </div></div>
-              <div><p class="label">Severity *</p><div class="grid grid-cols-5 gap-1"><template x-for="sv in severities" :key="sv"><button type="button" @click="inc.severity=sv" :class="inc.severity===sv ? 'bg-primary-600 text-white ring-primary-600' : 'bg-white text-ink-600 ring-ink-200'" class="h-9 rounded-lg ring-1 text-xs font-semibold" x-text="sv"></button></template></div></div>
+              <div><p class="text-[15px] font-semibold text-ink-900 mb-2.5">Severity</p><div class="grid grid-cols-5 gap-1"><template x-for="sv in severities" :key="sv"><button type="button" @click="inc.severity=sv" :class="inc.severity===sv ? (['Severe','Death'].includes(sv) ? 'bg-danger-500 text-white ring-danger-500' : 'bg-primary-600 text-white ring-primary-600') : 'bg-white text-ink-600 ring-ink-200'" class="h-9 rounded-lg ring-1 text-xs font-semibold" x-text="sv"></button></template></div></div>
               <div class="grid grid-cols-2 gap-3"><div><label class="label">Time</label><input type="time" x-model="inc.datetime" class="field field-md" /></div><div><label class="label">Location</label><input x-model="inc.location" class="field field-md" /></div></div>
+              <p class="section-title">What happened</p>
               <div><label class="label">What happened? *</label><textarea x-model="inc.description" rows="3" class="field px-3 py-2" placeholder="Factual account…"></textarea></div>
               <template x-if="inc.typeId==='safeguarding'">
                 <div class="rounded-xl bg-danger-50 ring-1 ring-danger-100 p-3 space-y-2.5">
@@ -1324,10 +1325,11 @@ export function renderCarerVisit({ visit }) {
               <div><label class="label">Injuries — mark body map</label>${bodyMapControl('inc.injuries', (r) => `toggleInjury('${r}')`)}</div>
               <div><label class="label">Witnesses</label><input x-model="inc.witnesses" class="field field-md" placeholder="Names / none" /></div>
               <div><label class="label">Immediate action taken *</label><textarea x-model="inc.actions" rows="2" class="field px-3 py-2" placeholder="What you did…"></textarea></div>
+              <p class="section-title">Escalation</p>
               <div><p class="label">Who was informed? *</p><div class="grid grid-cols-2 gap-1.5"><template x-for="o in informedOpts" :key="o"><button type="button" @click="toggleInformed(o)" :class="inc.informed.includes(o) ? 'ring-primary-400 bg-primary-50 text-primary-700' : 'ring-ink-200 text-ink-600'" class="p-2 rounded-lg ring-1 text-xs font-medium text-left" x-text="o"></button></template></div></div>
-              <div class="flex items-center gap-4">
-                <label class="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" x-model="inc.riddor" class="w-4 h-4 rounded text-danger-600" />RIDDOR reportable</label>
-                <label class="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" x-model="inc.safeguarding" class="w-4 h-4 rounded text-danger-600" />Safeguarding</label>
+              <div class="rounded-lg ring-1 ring-danger-200 bg-danger-50 p-3 space-y-2">
+                <label class="flex items-center gap-2 text-sm font-medium text-danger-700"><input type="checkbox" x-model="inc.riddor" class="w-4 h-4 rounded text-danger-600" />RIDDOR reportable</label>
+                <label class="flex items-center gap-2 text-sm font-medium text-danger-700"><input type="checkbox" x-model="inc.safeguarding" class="w-4 h-4 rounded text-danger-600" />Safeguarding</label>
               </div>
               <label :class="inc.photo ? 'ring-success-300 bg-success-50 text-success-700' : 'ring-ink-300 text-ink-400'" class="w-full min-h-12 py-2 rounded-lg ring-1 ring-dashed grid place-items-center text-sm cursor-pointer"><input type="file" accept="image/*" capture="environment" class="hidden" @change="onIncPhoto($event)" /><span class="inline-flex items-center gap-2"><img :src="photoPreviews.incPhoto" x-show="photoPreviews.incPhoto" class="w-9 h-9 rounded object-cover" /><span x-text="inc.photo ? inc.photo : 'Take / attach photo'"></span></span></label>
             </div>
@@ -1340,16 +1342,17 @@ export function renderCarerVisit({ visit }) {
           <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
             ${recordSheetHeader("'Visit summary'", 'su.name')}
             <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
+              <p class="text-[15px] font-semibold text-ink-900 mb-2.5">This visit</p>
               <div class="grid grid-cols-2 gap-3">
                 <div class="card p-3 text-center"><p class="text-2xl font-bold text-ink-900" x-text="tasks.filter(t=>t.record).length + '/' + tasks.length"></p><p class="text-xs text-ink-400">Tasks recorded</p></div>
                 <div class="card p-3 text-center"><p class="text-2xl font-bold text-ink-900" x-text="medRows.length"></p><p class="text-xs text-ink-400">Medications</p></div>
                 <div class="card p-3 text-center"><p class="text-2xl font-bold text-ink-900" x-text="observations.length"></p><p class="text-xs text-ink-400">Observations</p></div>
                 <div class="card p-3 text-center"><p class="text-2xl font-bold" :class="incidents.length ? 'text-danger-600' : 'text-ink-900'" x-text="incidents.length"></p><p class="text-xs text-ink-400">Incidents</p></div>
               </div>
-              <div x-show="blocking.length" class="rounded-lg bg-warning-50 ring-1 ring-warning-100 p-3"><p class="text-xs font-semibold text-warning-800">Outstanding: <span x-text="blocking.join(', ')"></span></p></div>
-              <div x-show="observations.some(o=>o.flag==='abnormal')" class="rounded-lg bg-danger-50 ring-1 ring-danger-100 p-3"><p class="text-xs font-semibold text-danger-800">Abnormal observations were recorded and escalated.</p></div>
+              <div x-show="blocking.length">${banner('warning', html`<span class="font-semibold">Outstanding:</span> <span x-text="blocking.join(', ')"></span>`)}</div>
+              <div x-show="observations.some(o=>o.flag==='abnormal')">${banner('danger', html`<span class="font-semibold">Abnormal observations were recorded and escalated.</span>`)}</div>
               <div class="card p-3.5">
-                <p class="text-xs font-semibold text-ink-400 uppercase tracking-wide mb-2">Signatures</p>
+                <p class="section-title mb-2">Signatures</p>
                 <div class="grid grid-cols-2 gap-2.5">
                   <button @click="signVisit('carer')" class="h-14 rounded-lg ring-1 ring-dashed grid place-items-center text-xs px-1 text-center" :class="sigCarer?'ring-success-300 bg-success-50 text-success-700':'ring-ink-300 text-ink-400'"><span x-show="!sigCarer" class="inline-flex items-center gap-1.5">${icon('signature', 'w-4 h-4')}Carer sign</span><span x-show="sigCarer" x-text="sigCarer" class="font-medium"></span></button>
                   <button @click="signVisit('client')" class="h-14 rounded-lg ring-1 ring-dashed grid place-items-center text-xs px-1 text-center" :class="sigClient?'ring-success-300 bg-success-50 text-success-700':'ring-ink-300 text-ink-400'"><span x-show="!sigClient" class="inline-flex items-center gap-1.5">${icon('signature', 'w-4 h-4')}Client sign</span><span x-show="sigClient" x-text="sigClient" class="font-medium"></span></button>
@@ -1370,9 +1373,9 @@ export function renderCarerVisit({ visit }) {
                 <p class="text-xs mt-0.5" :class="checkinGeofence==='inside' ? 'text-success-700' : 'text-warning-800'" x-text="su.address"></p>
               </div>
               ${errorBox}
-              <div><p class="label">Check-in method *</p><div class="grid grid-cols-2 gap-1.5"><template x-for="m in CHECKIN_METHODS" :key="m.id"><button type="button" @click="checkinMethod=m.id" :class="checkinMethod===m.id ? (m.tone==='ok'?'bg-success-600 text-white ring-success-600':'bg-warning-500 text-white ring-warning-500') : 'bg-white text-ink-600 ring-ink-200'" class="h-9 rounded-lg ring-1 text-xs font-semibold px-1" x-text="m.label"></button></template></div></div>
+              <div><p class="text-[15px] font-semibold text-ink-900 mb-2.5">Check-in method</p><div class="flex flex-wrap gap-2"><template x-for="m in CHECKIN_METHODS" :key="m.id"><button type="button" @click="checkinMethod=m.id" :class="checkinMethod===m.id ? 'bg-primary-600 text-white ring-primary-600' : 'bg-surface text-ink-600 ring-ink-200'" class="rounded-full ring-1 px-3.5 py-2 text-[13px] font-medium" x-text="m.label"></button></template></div></div>
               <template x-if="checkinMethod==='manual' || checkinGeofence==='outside'"><div><label class="label">Reason *</label><input x-model="checkinReason" class="field field-md" placeholder="Why manual / out of geofence?" /></div></template>
-              <div><p class="label">On-entry welfare *</p><div class="space-y-1.5"><template x-for="w in WELFARE_OUTCOMES" :key="w.id"><button type="button" @click="welfare=w.id" :class="welfare===w.id ? (w.tone==='ok'?'ring-success-400 bg-success-50':w.tone==='warn'?'ring-warning-400 bg-warning-50':'ring-danger-400 bg-danger-50') : 'ring-ink-200'" class="w-full text-left p-2.5 rounded-lg ring-1 text-sm font-medium text-ink-800" x-text="w.label"></button></template></div></div>
+              <div><p class="text-[15px] font-semibold text-ink-900 mb-2.5">On-entry welfare</p><div class="rounded-2xl ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden"><template x-for="w in WELFARE_OUTCOMES" :key="w.id"><button type="button" @click="welfare=w.id" :class="welfare===w.id ? 'bg-primary-50' : ''" class="w-full flex items-center gap-3 px-3.5 py-3 text-left"><span class="w-3 h-3 rounded-full shrink-0" :class="w.tone==='ok'?'bg-success-500':w.tone==='warn'?'bg-warning-500':'bg-danger-500'"></span><span class="flex-1 text-sm font-medium text-ink-800" x-text="w.label"></span><span x-show="welfare===w.id" class="text-primary-600">${icon('check', 'w-4 h-4')}</span></button></template></div></div>
             </div>
             <div class="p-4 border-t border-ink-200 bg-surface shrink-0"><button @click="performCheckin()" class="btn btn-primary btn-lg w-full">${icon('clock', 'w-5 h-5')}Check in & start visit</button></div>
           </div>
@@ -1383,17 +1386,18 @@ export function renderCarerVisit({ visit }) {
           <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
             ${recordSheetHeader("'Leaving safe'", 'su.name')}
             <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
-              ${errorBox}
               <div class="rounded-xl bg-primary-50 ring-1 ring-primary-100 p-3 text-sm text-primary-800 flex items-center gap-2">${icon('shield', 'w-4 h-4')}Confirm the home is safe to leave. Each item: done or a defined exception.</div>
-              <div class="space-y-2.5">
+              ${errorBox}
+              <p class="text-[15px] font-semibold text-ink-900 mb-2.5">Home safe to leave</p>
+              <div class="space-y-3">
                 <template x-for="item in LEAVING_SAFE_ITEMS" :key="item">
-                  <div class="card p-3"><p class="text-sm font-medium text-ink-800 mb-1.5" x-text="item"></p><select @change="setLeavingSafe(item, $event.target.value)" class="field field-md text-sm"><option value="">Choose…</option><template x-for="ex in LEAVING_SAFE_EXCEPTIONS" :key="ex"><option :value="ex" x-text="ex"></option></template></select></div>
+                  <div class="card p-3" :class="leavingSafe[item] ? 'ring-primary-100 bg-primary-50' : ''"><p class="text-sm font-medium text-ink-800 mb-1.5" x-text="item"></p><select @change="setLeavingSafe(item, $event.target.value)" class="field field-md text-sm"><option value="">Choose…</option><template x-for="ex in LEAVING_SAFE_EXCEPTIONS" :key="ex"><option :value="ex" x-text="ex"></option></template></select></div>
                 </template>
               </div>
               <!-- derived visit outcome -->
               <div class="card p-3.5">
                 <p class="text-xs font-semibold text-ink-400 uppercase tracking-wide mb-2">Visit outcome (derived)</p>
-                <div class="space-y-1 text-xs">
+                <div class="space-y-1 text-[13px]">
                   <div class="flex justify-between"><span class="text-ink-400">Attendance</span><span class="font-medium text-ink-800" x-text="visitDimensions.attendance"></span></div>
                   <div class="flex justify-between"><span class="text-ink-400">Planned care</span><span class="font-medium text-ink-800" x-text="visitDimensions.plannedCare"></span></div>
                   <div class="flex justify-between"><span class="text-ink-400">Care summary</span><span class="font-medium text-ink-800" x-text="visitDimensions.careSummary"></span></div>
@@ -1417,12 +1421,13 @@ export function renderCarerVisit({ visit }) {
           <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
             ${recordSheetHeader('su.name', "'Care summary'")}
             <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
-              <div class="card p-4"><p class="text-xs font-semibold text-danger-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">${icon('alert', 'w-3.5 h-3.5')}Allergies</p><div class="flex flex-wrap gap-1.5"><template x-for="a in (su.allergies||[])" :key="a"><span class="badge bg-danger-50 text-danger-700 ring-danger-100" x-text="a"></span></template><span x-show="!(su.allergies||[]).length" class="text-sm text-ink-500">None recorded</span></div></div>
-              <div class="card p-4"><p class="text-xs font-semibold text-warning-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">${icon('shield', 'w-3.5 h-3.5')}Active risks</p><div class="flex flex-wrap gap-1.5"><template x-for="r in (su.risks||[])" :key="r"><span class="badge bg-warning-50 text-warning-700 ring-warning-100" x-text="r"></span></template><span x-show="!(su.risks||[]).length" class="text-sm text-ink-500">None recorded</span></div></div>
+              <div class="card p-4 flex items-center gap-3"><span class="w-14 h-14 rounded-2xl bg-primary-100 text-primary-700 grid place-items-center text-lg font-bold" x-text="su.initials"></span><div><p class="text-xl font-bold text-ink-900" x-text="su.name"></p><p class="text-sm text-ink-500">DOB <span x-text="su.dob"></span></p></div></div>
+              <div class="card p-4"><p class="section-title text-danger-700 mb-1.5 flex items-center gap-1.5">${icon('alert', 'w-3.5 h-3.5')}Allergies</p><div class="flex flex-wrap gap-1.5"><template x-for="a in (su.allergies||[])" :key="a"><span class="badge bg-danger-50 text-danger-700 ring-danger-100" x-text="a"></span></template><span x-show="!(su.allergies||[]).length" class="text-sm text-ink-500">None recorded</span></div></div>
+              <div class="card p-4"><p class="section-title text-warning-700 mb-1.5 flex items-center gap-1.5">${icon('shield', 'w-3.5 h-3.5')}Active risks</p><div class="flex flex-wrap gap-1.5"><template x-for="r in (su.risks||[])" :key="r"><span class="badge bg-warning-50 text-warning-700 ring-warning-100" x-text="r"></span></template><span x-show="!(su.risks||[]).length" class="text-sm text-ink-500">None recorded</span></div></div>
               ${aboutCareMarkup}
               <div class="card p-4"><p class="section-title mb-1">About me</p><p class="text-sm text-ink-700" x-text="su.aboutMe || '—'"></p></div>
               <div class="card p-4"><p class="section-title mb-1.5 flex items-center gap-1.5">${icon('shield', 'w-3.5 h-3.5')}Key-safe / access</p>${keySafeMarkup}<p class="text-sm text-ink-700 mt-1.5" x-text="su.access || '—'"></p></div>
-              <div class="card p-4 flex items-center gap-3"><span class="w-9 h-9 rounded-xl bg-primary-50 text-primary-600 grid place-items-center">${icon('bell', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="section-title">Emergency contact</p><p class="text-sm text-ink-700 truncate" x-text="su.emergencyContact || '—'"></p></div><button @click="window.__notify('Calling…','info')" class="btn btn-secondary btn-sm">Call</button></div>
+              <div class="card p-4 flex items-center gap-3"><span class="w-9 h-9 rounded-xl bg-primary-50 text-primary-600 grid place-items-center">${icon('bell', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="section-title">Emergency contact</p><p class="text-sm text-ink-700 truncate" x-text="su.emergencyContact || '—'"></p></div><button @click="window.__notify('Calling…','info')" class="btn btn-primary btn-sm">Call</button></div>
             </div>
           </div>
         </div>
@@ -1432,10 +1437,11 @@ export function renderCarerVisit({ visit }) {
           <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
             ${recordSheetHeader("'Office & on-call'", 'su.name')}
             <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
-              <div class="card p-3.5"><label class="label">Message the office</label><textarea x-model="msgText" rows="3" class="field px-3 py-2" placeholder="Type a message…"></textarea><button @click="sendMessage()" class="btn btn-primary btn-sm mt-2">${icon('arrow-right', 'w-3.5 h-3.5')}Send</button></div>
+              <div class="card p-3.5"><label class="label">Message the office</label><textarea x-model="msgText" rows="3" class="field px-3 py-2" placeholder="Type a message…"></textarea></div>
               <button @click="window.__notify('Calling on-call manager…','info')" class="btn btn-secondary btn-md w-full">${icon('bell', 'w-4 h-4')}Call on-call manager</button>
-              <div class="rounded-xl bg-danger-50 ring-1 ring-danger-100 p-3.5"><p class="text-xs font-semibold text-danger-700 uppercase tracking-wide mb-1 flex items-center gap-1.5">${icon('shield', 'w-3.5 h-3.5')}Lone worker</p><button @click="window.__notify('Safety check-in sent to office','success')" class="btn btn-danger btn-sm mt-1">Send safety check-in</button></div>
+              <div class="rounded-xl bg-danger-50 ring-1 ring-danger-100 p-3.5"><p class="section-title text-danger-700 mb-1 flex items-center gap-1.5">${icon('shield', 'w-3.5 h-3.5')}Lone worker</p><button @click="window.__notify('Safety check-in sent to office','success')" class="btn btn-danger btn-md w-full mt-1">Send safety check-in</button></div>
             </div>
+            <div class="p-4 border-t border-ink-200 bg-surface shrink-0"><button @click="sendMessage()" :disabled="!msgText" class="btn btn-lg w-full" :class="msgText ? 'btn-primary' : 'btn-secondary opacity-60'">Send to office</button></div>
           </div>
         </div>
 
