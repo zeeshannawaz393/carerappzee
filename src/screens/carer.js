@@ -669,23 +669,6 @@ export function registerCarerApp(Alpine) {
     sendMessage() { if (!this.msgText.trim()) return; carerStore.addMessage({ visitId: this.visitId, to: 'Office', text: this.msgText }); this.msgText = ''; this.refresh(); window.__notify('Message sent to office', 'success') },
     syncNow() { carerStore.sync(); this.queued = 0; window.__notify('All records synced', 'success') },
 
-    /* ---------- charts / running totals ---------- */
-    get fluidTarget() { return this.su.id === 'su-mary' ? 1500 : 1200 },
-    get fluidRecords() {
-      const rows = []
-      this.observations.filter((o) => o.typeId === 'fluid').forEach((o) => rows.push({ time: o.at, label: o.values.drinkType || 'Drink', ml: Number(o.values.amount) || 0 }))
-      this.tasks.forEach((t) => { const e = t.record && t.record.evidence; if (e && e.amountMl) rows.push({ time: t.record.at, label: e.drinkType || t.title, ml: Number(e.amountMl) || 0 }) })
-      return rows.sort((a, b) => a.time.localeCompare(b.time))
-    },
-    get fluidTotal() { return this.fluidRecords.reduce((s, r) => s + r.ml, 0) },
-    get fluidPct() { return Math.min(100, Math.round((this.fluidTotal / this.fluidTarget) * 100)) },
-    get foodRecords() {
-      const rows = []
-      this.observations.filter((o) => o.typeId === 'food').forEach((o) => rows.push({ time: o.at, label: o.values.meal || 'Meal', eaten: o.values.eaten }))
-      this.tasks.forEach((t) => { const e = t.record && t.record.evidence; if (e && e.amountEaten) rows.push({ time: t.record.at, label: e.mealOffered || t.title, eaten: e.amountEaten }) })
-      return rows.sort((a, b) => a.time.localeCompare(b.time))
-    },
-    get repositions() { return this.observations.filter((o) => o.typeId === 'reposition').map((o) => ({ time: o.at, position: o.values.position })) },
 
     /* ---------- daily-log timeline ---------- */
     get timeline() {
@@ -1324,29 +1307,6 @@ export function renderCarerVisit({ visit }) {
             </div>
           </div>
 
-          <!-- charts -->
-          <div>
-            <p class="section-title mb-2.5">Charts</p>
-            <div class="space-y-3">
-              <div class="card p-4">
-                <div class="flex items-center justify-between mb-2"><p class="text-sm font-semibold text-ink-900 flex items-center gap-1.5">${icon('droplet', 'w-4 h-4 text-info-500')}Fluid balance</p><span class="text-xs text-ink-500" x-text="fluidTotal+' / '+fluidTarget+' ml'"></span></div>
-                <div class="h-2.5 rounded-full bg-ink-100 overflow-hidden"><div class="h-2.5 rounded-full transition-all" :class="fluidPct>=100 ? 'bg-success-500' : fluidPct>=60 ? 'bg-info-500' : 'bg-warning-500'" :style="'width:'+fluidPct+'%'"></div></div>
-                <div class="mt-3 space-y-1.5">
-                  <template x-for="r in fluidRecords" :key="r.time+r.label"><div class="flex items-center justify-between text-sm"><span class="text-ink-600" x-text="r.time+' · '+r.label"></span><span class="font-semibold text-ink-800" x-text="r.ml+' ml'"></span></div></template>
-                  <p x-show="!fluidRecords.length" class="text-sm text-ink-500">No fluids recorded yet.</p>
-                </div>
-              </div>
-              <div class="card p-4">
-                <p class="text-sm font-semibold text-ink-900 flex items-center gap-1.5 mb-2">${icon('utensils', 'w-4 h-4 text-warning-500')}Food intake</p>
-                <div class="space-y-1.5"><template x-for="r in foodRecords" :key="r.time+r.label"><div class="flex items-center justify-between text-sm"><span class="text-ink-600" x-text="r.time+' · '+r.label"></span><span class="badge" :class="['Little','None'].includes(r.eaten)?'bg-danger-50 text-danger-700 ring-danger-100':'bg-success-50 text-success-700 ring-success-100'" x-text="r.eaten"></span></div></template><p x-show="!foodRecords.length" class="text-sm text-ink-500">No meals recorded yet.</p></div>
-              </div>
-              <div class="card p-4">
-                <p class="text-sm font-semibold text-ink-900 flex items-center gap-1.5 mb-2">${icon('footprints', 'w-4 h-4 text-primary-500')}Repositioning</p>
-                <div class="space-y-1.5"><template x-for="r in repositions" :key="r.time"><div class="flex items-center justify-between text-sm"><span class="text-ink-600" x-text="r.time"></span><span class="font-medium text-ink-800" x-text="r.position"></span></div></template><p x-show="!repositions.length" class="text-sm text-ink-500">No repositioning logged yet.</p></div>
-              </div>
-            </div>
-            <p class="text-xs text-ink-400 mt-2 flex items-center gap-1.5">${icon('info', 'w-3.5 h-3.5')}Full observation readings are on the <button @click="tab='obs'" class="font-semibold text-primary-600 underline">Obs</button> tab.</p>
-          </div>
 
           <!-- visit note / handover (write) -->
           <div>
