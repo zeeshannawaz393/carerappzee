@@ -156,8 +156,6 @@ export function registerCarerApp(Alpine) {
     },
     get abnormalObsCount() { return this.observations.filter((o) => o.flag === 'abnormal').length },
     get sortedObs() { return [...this.observations].sort((a, b) => (b.flag === 'abnormal') - (a.flag === 'abnormal')) },
-    get vitalObs() { return (this.obsByGroup.find((g) => g.g === 'Vital signs') || {}).items || [] },
-    get moreObsGroups() { return this.obsByGroup.filter((g) => g.g !== 'Vital signs') },
     get progress() {
       // Medication tasks are represented by their scheduled meds (recorded on the
       // eMAR), so exclude them here to avoid double-counting.
@@ -1051,57 +1049,24 @@ export function renderCarerVisit({ visit }) {
         </div>
 
         <!-- OBSERVATIONS -->
-        <div x-show="tab==='obs'" x-cloak class="p-4 space-y-5" x-data="{ moreObs:false }">
+        <div x-show="tab==='obs'" x-cloak class="p-4 space-y-5">
 
           <!-- 1 · abnormal summary (only when something needs attention) -->
           <template x-if="abnormalObsCount">
             ${banner('danger', html`<span class="font-semibold"><span x-text="abnormalObsCount"></span> abnormal reading<span x-show="abnormalObsCount>1" x-cloak>s</span></span> this visit — office alerted. Review below.`)}
           </template>
 
-          <!-- 2 · record an observation (primary task) -->
+          <!-- 2 · record an observation — primary button opens the picker sheet;
+               the full type grid lives there so this screen stays short. Suggested
+               types are a quick fast-path that skips the picker. -->
           <div>
-            <p class="text-[15px] font-semibold text-ink-900 mb-3">Record observation</p>
-
+            <button @click="sheet='obsPicker'" class="btn btn-primary btn-lg w-full">${icon('plus', 'w-5 h-5')}Record observation</button>
             <template x-if="recommendedObs.length">
-              <div class="mb-4">
+              <div class="mt-3">
                 <p class="section-title mb-2">Suggested for this client</p>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="ot in recommendedObs" :key="ot.id">
                     <button @click="openObs(ot)" :class="obsTint(ot.id)" class="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-medium active:brightness-95"><span x-html="window.__obsIcon(ot.icon, 'w-4 h-4')"></span><span x-text="ot.name"></span></button>
-                  </template>
-                </div>
-              </div>
-            </template>
-
-            <p class="section-title mb-2">Vital signs</p>
-            <div class="grid grid-cols-2 gap-2.5">
-              <template x-for="ot in vitalObs" :key="ot.id">
-                <button @click="openObs(ot)" class="rounded-2xl bg-white ring-1 ring-ink-100 p-3.5 min-h-[60px] flex items-center gap-3 text-left active:bg-ink-50">
-                  <span :class="obsTint(ot.id)" class="w-9 h-9 rounded-lg grid place-items-center shrink-0" x-html="window.__obsIcon(ot.icon)"></span>
-                  <span class="text-[13px] font-medium text-ink-700 leading-tight" x-text="ot.name"></span>
-                </button>
-              </template>
-            </div>
-
-            <template x-if="moreObsGroups.length">
-              <div>
-                <button @click="moreObs=!moreObs" class="w-full mt-3 py-1.5 text-[13px] font-medium text-ink-500 flex items-center justify-center gap-1 active:text-ink-700">
-                  <span x-text="moreObs ? 'Fewer observations' : 'More observations'"></span>
-                  <span class="inline-flex transition-transform" :class="moreObs && 'rotate-180'">${icon('chevron-down', 'w-4 h-4')}</span>
-                </button>
-                <div x-show="moreObs" x-cloak class="space-y-4 mt-1">
-                  <template x-for="grp in moreObsGroups" :key="grp.g">
-                    <div>
-                      <p class="section-title mb-2" x-text="grp.g"></p>
-                      <div class="grid grid-cols-3 gap-2">
-                        <template x-for="ot in grp.items" :key="ot.id">
-                          <button @click="openObs(ot)" class="rounded-2xl bg-white ring-1 ring-ink-100 p-2.5 min-h-[64px] flex flex-col items-center justify-center gap-1.5 text-center active:bg-ink-50">
-                            <span :class="obsTint(ot.id)" class="w-8 h-8 rounded-lg grid place-items-center" x-html="window.__obsIcon(ot.icon)"></span>
-                            <span class="text-[11px] font-medium text-ink-600 leading-tight" x-text="ot.name"></span>
-                          </button>
-                        </template>
-                      </div>
-                    </div>
                   </template>
                 </div>
               </div>
@@ -1365,6 +1330,29 @@ export function renderCarerVisit({ visit }) {
               </div>
             </div>
           </template>
+        </div>
+
+        <!-- observation picker sheet — the full type grid, one uniform tile
+             design for every group, so the Obs tab itself stays short -->
+        <div x-show="sheet==='obsPicker'" x-cloak class="absolute inset-0 z-20 bg-black/40 flex items-end" @click.self="sheet=null">
+          <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
+            ${recordSheetHeader("'Record observation'", "'Choose what to record'")}
+            <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
+              <template x-for="grp in obsByGroup" :key="grp.g">
+                <div>
+                  <p class="section-title mb-2.5" x-text="grp.g"></p>
+                  <div class="grid grid-cols-3 gap-2.5">
+                    <template x-for="ot in grp.items" :key="ot.id">
+                      <button @click="openObs(ot)" class="rounded-2xl bg-white ring-1 ring-ink-100 p-3 min-h-[86px] flex flex-col items-center justify-center gap-2 text-center active:bg-ink-50">
+                        <span :class="obsTint(ot.id)" class="w-11 h-11 rounded-xl grid place-items-center" x-html="window.__obsIcon(ot.icon)"></span>
+                        <span class="text-[11px] font-medium text-ink-700 leading-tight" x-text="ot.name"></span>
+                      </button>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
         </div>
 
         <!-- observation form sheet -->
