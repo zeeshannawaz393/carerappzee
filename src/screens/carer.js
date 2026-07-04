@@ -778,11 +778,14 @@ function fieldControls(loopExpr) {
           <select x-model="form[f.key]" class="field field-md"><option value="">Select…</option><template x-for="o in f.options" :key="o"><option :value="o" x-text="o"></option></template></select>
         </template>
         <template x-if="f.type==='checklist'">
-          <div class="space-y-1.5"><template x-for="o in f.options" :key="o">
-            <button type="button" @click="toggleCheck(f.key,o)" :class="(form[f.key]||[]).includes(o) ? 'ring-primary-400 bg-primary-50' : 'ring-ink-200'" class="w-full flex items-center gap-2.5 p-2.5 rounded-lg ring-1 text-left">
-              <span class="w-5 h-5 rounded grid place-items-center shrink-0" :class="(form[f.key]||[]).includes(o) ? 'bg-primary-600 text-white' : 'ring-1 ring-ink-300'"><span x-show="(form[f.key]||[]).includes(o)">${icon('check', 'w-3.5 h-3.5')}</span></span>
-              <span class="text-sm text-ink-700" x-text="o"></span>
-            </button></template></div>
+          <div class="rounded-2xl ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">
+            <template x-for="o in f.options" :key="o">
+              <button type="button" @click="toggleCheck(f.key,o)" :class="(form[f.key]||[]).includes(o) ? 'bg-primary-50' : 'bg-surface'" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-ink-50">
+                <span class="w-5 h-5 rounded-md grid place-items-center shrink-0" :class="(form[f.key]||[]).includes(o) ? 'bg-primary-600 text-white' : 'ring-1 ring-ink-300'"><span x-show="(form[f.key]||[]).includes(o)" x-cloak>${icon('check', 'w-3.5 h-3.5')}</span></span>
+                <span class="flex-1 text-sm font-medium text-ink-800" x-text="o"></span>
+              </button>
+            </template>
+          </div>
         </template>
         <template x-if="f.type==='number'">
           <div class="relative"><input type="number" :min="f.min" :max="f.max" :step="f.step||1" x-model.number="form[f.key]" class="field field-md" :class="f.unit && 'pr-14'" placeholder="0" /><span x-show="f.unit" class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-ink-400" x-text="f.unit"></span></div>
