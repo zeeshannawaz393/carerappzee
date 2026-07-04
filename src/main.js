@@ -121,6 +121,13 @@ window.__reposition = (suId, pos, skin) => {
   toast(`Repositioning logged — ${pos}`, skin && skin !== 'Intact' ? 'warning' : 'success')
   handleRoute()
 }
+window.__woundMeasure = (woundId, length, width, tissue) => {
+  const l = Number(length) || 0, w = Number(width) || 0
+  if (!l || !w) { toast('Enter length and width', 'warning'); return }
+  carerStore.addWoundMeasurement(woundId, { date: 'Today', length: l, width: w, tissue: tissue || '—', by: 'You' })
+  toast('Wound measurement logged', 'success')
+  handleRoute()
+}
 window.__doJob = (jobId, evidence) => {
   carerStore.completeJob(jobId, { evidence: !!evidence })
   toast(evidence ? 'Job completed with evidence' : 'Job marked done', 'success')

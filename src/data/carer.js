@@ -945,6 +945,11 @@ export const OBSERVATION_TYPES = [
     fields: [{ key: 'type', label: 'Bristol type (1–7)', type: 'score', min: 1, max: 7, required: true, abnormalValues: ['1', '2', '6', '7'] }, { key: 'note', label: 'Comment', type: 'textarea' }] },
   { id: 'output', name: 'Urine / catheter output', icon: 'droplet', group: 'Intake & output',
     fields: [{ key: 'amount', label: 'Output', type: 'number', unit: 'ml', required: true, min: 0, max: 3000 }, { key: 'colour', label: 'Colour', type: 'select', options: ['Pale', 'Normal', 'Dark', 'Cloudy', 'Blood-stained'], abnormalValues: ['Dark', 'Cloudy', 'Blood-stained'] }] },
+  { id: 'continence', name: 'Continence care', icon: 'toilet', group: 'Intake & output',
+    fields: [
+      { key: 'care', label: 'Care given', type: 'checklist', options: ['Toileted', 'Pad checked', 'Pad changed', 'Catheter bag emptied', 'Catheter care given'] },
+      { key: 'status', label: 'Continence status', type: 'select', required: true, options: ['Continent / dry', 'Damp', 'Wet', 'Soiled', 'Catheter bypassing / leaking'], abnormalValues: ['Catheter bypassing / leaking'] },
+      { key: 'note', label: 'Comment', type: 'textarea' }] },
   { id: 'reposition', name: 'Repositioning', icon: 'rotate-cw', group: 'Skin & mobility',
     fields: [{ key: 'position', label: 'Repositioned to', type: 'select', required: true, options: ['Back', 'Left side', 'Right side', 'Sat up', 'Chair'] }, { key: 'skin', label: 'Skin on inspection', type: 'select', options: ['Intact', 'Red', 'Broken'], abnormalValues: ['Red', 'Broken'] }] },
   { id: 'skin', name: 'Skin / body map', icon: 'person-standing', group: 'Skin & mobility',
@@ -1493,6 +1498,31 @@ export const REPOSITION_PLAN = {
   ] },
 }
 export const repositionFor = (id) => REPOSITION_PLAN[id] || null
+
+/**
+ * §19 AC-19.21 — wound-healing tracker. A wound is tracked over time (not one
+ * visit): serial measurements + consented photos keyed to a body-map site, so
+ * the record shows whether it is improving or deteriorating. Area (length×width
+ * mm²) is the standard proxy for healing trend in pressure-ulcer monitoring.
+ */
+export const WOUNDS = {
+  'su-mary': [
+    { id: 'w-sacrum', site: 'Sacrum', side: 'Midline', type: 'Pressure ulcer', category: 'Category 2', opened: '2026-06-18',
+      measurements: [
+        { date: '18 Jun', length: 32, width: 24, depth: 3, tissue: 'Slough', exudate: 'Moderate', note: 'Broken skin over sacrum after a period in bed.' },
+        { date: '25 Jun', length: 30, width: 22, depth: 3, tissue: 'Slough / granulation', exudate: 'Moderate', note: 'Wound bed cleaner, edges softening.' },
+        { date: '01 Jul', length: 26, width: 19, depth: 2, tissue: 'Granulation', exudate: 'Low', note: 'Granulating well, exudate reducing.' },
+      ],
+      photos: [{ date: '18 Jun', consented: true }, { date: '01 Jul', consented: true }] },
+    { id: 'w-heel', site: 'Left heel', side: 'Left', type: 'Pressure ulcer', category: 'Category 1', opened: '2026-06-28',
+      measurements: [
+        { date: '28 Jun', length: 18, width: 15, depth: 0, tissue: 'Non-blanching redness', exudate: 'None', note: 'Non-blanching erythema, skin intact.' },
+        { date: '02 Jul', length: 22, width: 18, depth: 0, tissue: 'Non-blanching redness', exudate: 'None', note: 'Redness spreading — offloading heel, review pressure relief.' },
+      ],
+      photos: [] },
+  ],
+}
+export const woundsFor = (id) => WOUNDS[id] || []
 
 /* ============================================================================
    Spec v3.4 — E10: roles, non-visit jobs, change-requests, continuity

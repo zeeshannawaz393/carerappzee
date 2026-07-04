@@ -5,7 +5,7 @@
  */
 const KEY = 'caretask.carer.v3'
 
-const empty = () => ({ seq: 1, clock: {}, tasks: {}, meds: [], observations: [], incidents: [], messages: [], notes: {}, inbound: [], protocols: [], acks: {}, alertLc: {}, drafts: {}, queued: 0, jobs: {}, changeRequests: [], recon: {}, reposition: [], cash: {}, learning: {}, trainRenew: {}, courseProg: {} })
+const empty = () => ({ seq: 1, clock: {}, tasks: {}, meds: [], observations: [], incidents: [], messages: [], notes: {}, inbound: [], protocols: [], acks: {}, alertLc: {}, drafts: {}, queued: 0, jobs: {}, changeRequests: [], recon: {}, reposition: [], cash: {}, learning: {}, trainRenew: {}, courseProg: {}, wounds: {} })
 
 function load() {
   try {
@@ -181,6 +181,10 @@ export const carerStore = {
   /* ---- repositioning (§19 / E9) ---- */
   addReposition(rec) { const row = { id: id('rep'), at: now(), ...rec }; s.reposition.unshift(row); bump(); save(); return row },
   repositions(suId) { return s.reposition.filter((r) => r.suId === suId) },
+
+  /* ---- wound-healing tracker (§19 / E9) — serial measurements per wound ---- */
+  addWoundMeasurement(woundId, m) { (s.wounds[woundId] = s.wounds[woundId] || []).push({ ...m, at: now() }); bump(); save(); return s.wounds[woundId] },
+  woundMeasurements(woundId) { return s.wounds[woundId] || [] },
 
   /* ---- client-money cash count (§26 / E9) ---- */
   setCash(suId, rec) { s.cash[suId] = { ...(s.cash[suId] || {}), ...rec, at: now() }; save(); return s.cash[suId] },

@@ -8,7 +8,7 @@ import { icon } from '../icons.js'
 import { mobileFlow, flowHeader } from './frame.js'
 import { emptyMobile } from './states.js'
 import { getServiceUser } from '../data/index.js'
-import { monitoringFor, repositionFor, WOUND_VOCAB } from '../data/carer.js'
+import { monitoringFor, repositionFor, woundsFor, WOUND_VOCAB } from '../data/carer.js'
 import { carerStore } from '../lib/carerStore.js'
 
 const notFound = (back) => mobileFlow(html`${flowHeader({ title: 'Not found', back })}${emptyMobile({ title: 'Client not found' })}`)
@@ -43,6 +43,12 @@ const TREND_HISTORY = {
     // Specialist (condition-gated)
     behaviour: ['Settled', 'Settled', 'Agitated', 'Settled', 'Sundowning', 'Agitated', 'Settled'],
     seizure: [{ ago: 8, type: 'Tonic-clonic', dur: 95 }, { ago: 21, type: 'Absence', dur: 12 }],
+    // Continence / catheter (condition-gated by data presence) — 24h output, colour, care events
+    catheter: {
+      output: [1350, 1420, 1180, 950, 780, 1240, 1100],
+      colour: ['Normal', 'Normal', 'Dark', 'Cloudy', 'Cloudy', 'Normal', 'Dark'],
+      pads: [3, 4, 3, 5, 5, 4, 4],
+    },
   },
 }
 const barColor = (v, t) => (v >= t ? 'bg-success-500' : v >= t * 0.6 ? 'bg-info-500' : 'bg-warning-500')
@@ -310,6 +316,111 @@ function buildSpecialist(h, live) {
   return section('Specialist', cards.join(''))
 }
 
+/* ---- Continence & catheter (condition-gated by demo data presence) ---- */
+function buildContinence(h, live) {
+  if (!h.catheter) return ''
+  const c = h.catheter
+  const out = c.output.slice(), col = c.colour.slice(), pads = c.pads.slice()
+  // live "today": total urine/catheter output, latest colour, pad/continence events
+  const lo = liveOf(live, 'output')
+  if (lo.length) {
+    out[out.length - 1] = lo.reduce((s, o) => s + (Number(o.values.amount) || 0), 0)
+    const lc = lo[0].values.colour; if (lc) col[col.length - 1] = lc
+  }
+  const lp = liveOf(live, 'continence').filter((o) => Array.isArray(o.values.care) && o.values.care.some((x) => /pad changed|toileted|emptied/i.test(x)))
+  if (lp.length) pads[pads.length - 1] = lp.length
+
+  const today = out[out.length - 1]
+  const LOW = 500 // possible blockage / oliguria over 24h
+  const colTone = (x) => (/blood/i.test(x) ? 'danger' : /dark|cloudy/i.test(x) ? 'warning' : 'success')
+  const recentBad = col.slice(-3).some((x) => /dark|cloudy|blood/i.test(x))
+  const bloodSeen = col.slice(-3).some((x) => /blood/i.test(x))
+  const low = today < LOW
+  const tone = bloodSeen || low ? 'danger' : recentBad ? 'warning' : 'success'
+  const oMax = Math.max(1500, ...out) * 1.05
+  const note = bloodSeen
+    ? '<b>Blood-stained urine seen</b> — possible UTI or trauma; report to the office / GP today.'
+    : low
+      ? `<b>Low output today (${today} ml)</b> — check for a blocked or kinked catheter; escalate if it does not drain.`
+      : recentBad
+        ? '<b>Dark / cloudy urine</b> — a soft sign of UTI. Encourage fluids and watch for new confusion or fever.'
+        : 'Output volume and colour within the expected range.'
+  return section('Continence &amp; catheter', trendCard('bg-info-500 text-white', 'droplet', 'Catheter output',
+    chip(tone, bloodSeen ? 'Blood seen' : low ? 'Low output' : recentBad ? 'UTI watch' : 'Normal'), html`
+    <p class="text-2xl font-bold tabular-nums text-ink-900">${today} <span class="text-sm font-semibold text-ink-400">ml / 24h</span></p>
+    <div class="relative flex items-end gap-1.5 h-11 mt-3">
+      ${out.map((v) => `<div class="flex-1 rounded-t ${v < LOW ? 'bg-danger-500' : 'bg-info-500'}" style="height:${Math.max(6, Math.round((v / oMax) * 100))}%"></div>`).join('')}
+      <div class="absolute left-0 right-0" style="bottom:${Math.round((LOW / oMax) * 100)}%;border-top:1.5px dashed #d4351c"></div>
+    </div>
+    <div class="flex gap-1.5 mt-1">${dayLabels(out.length)}</div>
+    <p class="text-[11px] font-semibold text-ink-500 mt-3 mb-1">Urine colour</p>
+    <div class="flex gap-1.5">${col.map((x, i) => `<div class="flex-1"><div class="h-4 rounded bg-${colTone(x)}-500" title="${esc(x)}"></div><span class="block text-center text-[9px] text-ink-400 mt-1 font-semibold">${TREND_DAYS[i]}</span></div>`).join('')}</div>
+    <div class="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
+      <span class="text-[12px] text-ink-500">Pad changes / continence care today</span>
+      <span class="text-sm font-bold text-ink-800 tabular-nums">${pads[pads.length - 1]}</span>
+    </div>
+    ${trendNote(tone === 'success' ? 'ink' : tone, note)}`))
+}
+
+/* ---- Wound-healing tracker (§19.21) — serial size/photo timeline per wound ---- */
+function buildWounds(su) {
+  const wounds = woundsFor(su.id)
+  if (!wounds.length) return ''
+  const TISSUES = ['Granulation', 'Slough', 'Necrotic', 'Epithelialising', 'Non-blanching redness']
+  const cards = wounds.map((wd) => {
+    const ms = [...wd.measurements, ...carerStore.woundMeasurements(wd.id)]
+    const areas = ms.map((m) => m.length * m.width)
+    const first = areas[0], last = areas[areas.length - 1]
+    const delta = first ? Math.round(((last - first) / first) * 100) : 0
+    const trend = last < first * 0.9 ? 'improving' : last > first * 1.1 ? 'deteriorating' : 'static'
+    const tone = trend === 'improving' ? 'success' : trend === 'deteriorating' ? 'danger' : 'info'
+    const stroke = trend === 'improving' ? '#178a4c' : trend === 'deteriorating' ? '#d4351c' : '#0f5aa0'
+    const latest = ms[ms.length - 1]
+    const aMax = Math.max(...areas, 1) * 1.15
+    const n = areas.length, x0 = 8, x1 = 292
+    const xy = areas.map((a, i) => [n > 1 ? x0 + ((x1 - x0) * i) / (n - 1) : 150, 54 - (a / aMax) * 44])
+    const line = xy.map((p) => `${p[0].toFixed(0)},${p[1].toFixed(1)}`).join(' ')
+    const photos = wd.photos || []
+    return trendCard('bg-danger-500 text-white', 'activity', `${esc(wd.site)} &middot; ${esc(wd.type)}`,
+      `${chip('ink', esc(wd.category))}${chip(tone, trend === 'improving' ? 'Improving' : trend === 'deteriorating' ? 'Deteriorating' : 'Static')}`, html`
+      <div class="flex items-baseline gap-2 flex-wrap">
+        <p class="text-2xl font-bold tabular-nums text-ink-900">${last} <span class="text-sm font-semibold text-ink-400">mm²</span></p>
+        ${chip(tone, `${delta <= 0 ? '&#9660;' : '&#9650;'} ${Math.abs(delta)}% since ${esc(ms[0].date)}`)}
+      </div>
+      <svg viewBox="0 0 300 60" class="w-full mt-1" style="height:60px" preserveAspectRatio="none">
+        ${n > 1 ? `<polyline points="${line}" fill="none" stroke="${stroke}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>` : ''}
+        ${xy.map((p) => `<circle cx="${p[0].toFixed(0)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${stroke}" stroke="#fff" stroke-width="1.5" vector-effect="non-scaling-stroke"></circle>`).join('')}
+      </svg>
+      <div class="flex gap-1.5">${ms.map((m) => `<span class="flex-1 text-center text-[9px] text-ink-400 font-semibold">${esc(m.date)}</span>`).join('')}</div>
+      <div class="mt-3 rounded-xl bg-ink-50 ring-1 ring-ink-100 p-3">
+        <p class="text-[10px] font-semibold text-ink-400 uppercase tracking-wide">Latest &middot; ${esc(latest.date)}</p>
+        <p class="text-[13px] text-ink-800 mt-0.5"><b class="tabular-nums">${latest.length}&times;${latest.width}${latest.depth ? '&times;' + latest.depth : ''} mm</b> &middot; ${esc(latest.tissue)}${latest.exudate ? ' &middot; ' + esc(latest.exudate) + ' exudate' : ''}</p>
+        ${latest.note ? `<p class="text-[12px] text-ink-500 mt-1">${esc(latest.note)}</p>` : ''}
+      </div>
+      ${photos.length
+        ? `<div class="flex gap-2 mt-3 items-start">${photos.map((p) => `<div><div class="w-14 h-14 rounded-lg bg-gradient-to-br from-ink-100 to-ink-200 ring-1 ring-ink-200 grid place-items-center text-ink-400">${icon('activity', 'w-5 h-5')}</div><span class="block text-center text-[9px] text-ink-400 mt-1 font-semibold">${esc(p.date)}</span></div>`).join('')}<p class="flex-1 text-[11px] text-ink-400">Consented photos held with the wound record.</p></div>`
+        : `<p class="text-[11px] text-ink-400 mt-3">No photos — capture one (with recorded consent) in a skin observation to build the visual timeline.</p>`}
+      <details class="mt-2"><summary class="text-[12px] font-semibold text-primary-700 cursor-pointer list-none">Measurement history (${ms.length})</summary>
+        <div class="mt-2 rounded-xl ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">
+          ${ms.map((m) => `<div class="flex items-center gap-2 px-3 py-2 text-[12px]"><span class="w-14 text-ink-500 font-semibold">${esc(m.date)}</span><span class="flex-1 text-ink-800 tabular-nums">${m.length}&times;${m.width} mm &middot; ${m.length * m.width} mm²</span><span class="text-ink-400">${esc(m.tissue || '')}</span></div>`).join('')}
+        </div>
+      </details>
+      <div class="mt-3 pt-3 border-t border-ink-100" x-data="{ l: '', w: '', t: '' }">
+        <p class="text-[10px] font-semibold text-ink-400 uppercase tracking-wide mb-2">Add measurement</p>
+        <div class="grid grid-cols-3 gap-2">
+          <div><label class="label">Length</label><input type="number" x-model="l" class="field field-sm" placeholder="mm"></div>
+          <div><label class="label">Width</label><input type="number" x-model="w" class="field field-sm" placeholder="mm"></div>
+          <div><label class="label">Tissue</label><select x-model="t" class="field field-sm"><option value="">&mdash;</option>${TISSUES.map((o) => `<option>${o}</option>`).join('')}</select></div>
+        </div>
+        <button @click="window.__woundMeasure('${wd.id}', l, w, t); l=''; w=''; t=''" class="btn btn-secondary btn-sm w-full mt-2">${icon('plus', 'w-3.5 h-3.5')}Log measurement</button>
+      </div>
+      ${trendNote(tone === 'danger' ? 'danger' : 'ink', trend === 'deteriorating'
+        ? '<b>Wound is enlarging</b> — review pressure relief / dressing and report to the district nurse.'
+        : trend === 'improving' ? 'Healing well — surface area reducing. Keep the current regimen.' : 'Stable — continue monitoring and re-measure each dressing change.')}`)
+  })
+  return section('Wound healing &middot; tracked over time', cards.join(''))
+}
+
 export function renderMonitoring({ id }) {
   const su = getServiceUser(id)
   if (!su) return notFound('#/carer/clients')
@@ -329,9 +440,11 @@ export function renderMonitoring({ id }) {
   const h = TREND_HISTORY[id]
   const trends = h ? buildTrends(h, live) : ''
   const safety = h ? buildSafety(h, meds, incs) : ''
+  const continence = h ? buildContinence(h, live) : ''
   const clinical = h ? buildClinical(h, live, su) : ''
   const wellbeing = h ? buildWellbeing(h, live) : ''
   const specialist = h ? buildSpecialist(h, live) : ''
+  const wounds = buildWounds(su)
 
   const inner = html`
     ${flowHeader({ title: 'Monitoring', subtitle: esc(su.name), back: `#/carer/clients/${id}/history` })}
@@ -343,9 +456,11 @@ export function renderMonitoring({ id }) {
       <!-- Daily-trend charts (§19) — cross-visit, live "today" -->
       ${trends}
       ${safety}
+      ${continence}
       ${clinical}
       ${wellbeing}
       ${specialist}
+      ${wounds}
 
       <!-- Monitoring schedule (§19.14) -->
       <div>
