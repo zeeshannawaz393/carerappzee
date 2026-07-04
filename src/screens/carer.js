@@ -347,6 +347,7 @@ export function registerCarerApp(Alpine) {
     hasValue(f) { const v = this.form[f.key]; return Array.isArray(v) ? v.length > 0 : v !== '' && v != null },
     setBool(k, v) { this.form[k] = v },
     setScore(k, v) { this.form[k] = v },
+    moodFace(v) { return MOOD_SCALE[v] || { icon: 'meh', tint: 'text-ink-400', sel: 'bg-ink-400' } },
     toggleCheck(k, o) { if (!Array.isArray(this.form[k])) this.form[k] = []; const i = this.form[k].indexOf(o); i > -1 ? this.form[k].splice(i, 1) : this.form[k].push(o) },
     toggleBody(k, r) { if (!Array.isArray(this.form[k])) this.form[k] = []; const i = this.form[k].indexOf(r); i > -1 ? this.form[k].splice(i, 1) : this.form[k].push(r) },
     sign(k) { this.form[k] = `Aisha Khan · ${this.clock.in || '07:35'}` },
@@ -726,6 +727,16 @@ function phone(inner) {
     </div>`
 }
 
+/* Mood scale — face + colour per option, a green→red wellbeing gradient.
+   Keyed by the option label so evaluateObsFlag/obsSummary still see the string. */
+const MOOD_SCALE = {
+  'Bright / happy': { icon: 'laugh', tint: 'text-success-600', sel: 'bg-success-600' },
+  'Content': { icon: 'smile', tint: 'text-emerald-600', sel: 'bg-emerald-600' },
+  'Settled': { icon: 'meh', tint: 'text-amber-600', sel: 'bg-amber-500' },
+  'Low / tearful': { icon: 'frown', tint: 'text-orange-600', sel: 'bg-orange-500' },
+  'Very low / distressed': { icon: 'angry', tint: 'text-danger-600', sel: 'bg-danger-500' },
+}
+
 /* schema field controls (reused by task + observation forms) */
 function fieldControls(loopExpr) {
   return html`
@@ -753,6 +764,18 @@ function fieldControls(loopExpr) {
         </template>
         <template x-if="f.type==='score'">
           <div class="flex flex-wrap gap-1.5"><template x-for="sv in f.range" :key="sv"><button type="button" @click="setScore(f.key,sv)" :class="form[f.key]===sv ? 'bg-primary-600 text-white ring-primary-600' : 'ring-ink-200 text-ink-600'" class="w-9 h-9 rounded-lg ring-1 text-sm font-semibold" x-text="sv"></button></template></div>
+        </template>
+        <template x-if="f.type==='moodscale'">
+          <div>
+            <div class="flex items-stretch gap-2">
+              <template x-for="o in f.options" :key="o">
+                <button type="button" @click="setScore(f.key,o)" class="flex-1 aspect-square rounded-2xl grid place-items-center transition-colors active:scale-95" :class="form[f.key]===o ? moodFace(o).sel + ' text-white' : 'bg-ink-50 ' + moodFace(o).tint">
+                  <span x-html="window.__obsIcon(moodFace(o).icon, 'w-7 h-7')"></span>
+                </button>
+              </template>
+            </div>
+            <p class="text-center text-sm font-semibold mt-2.5 h-5" :class="form[f.key] ? 'text-ink-800' : 'text-ink-400'" x-text="form[f.key] || 'Tap a face to record mood'"></p>
+          </div>
         </template>
         <template x-if="f.type==='textarea'"><textarea x-model="form[f.key]" rows="3" class="field px-3 py-2" placeholder="Type a note…"></textarea></template>
         <template x-if="f.type==='text'"><input type="text" x-model="form[f.key]" class="field field-md" placeholder="…" /></template>
