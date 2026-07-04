@@ -444,26 +444,15 @@ export function renderMonitoring({ id }) {
       log() { if(!this.pos){ window.__notify('Choose a position','warning'); return } window.__reposition('${id}', this.pos, this.skin||'Intact'); this.pos=''; this.skin='' }
     }">
 
-      <!-- Daily-trend charts (§19) — cross-visit, live "today" -->
-      ${trends}
+      <!-- Ordered by clinical acuity: act-today signals first, slow trends next,
+           chronic tracking after, reference last. Sections self-hide when N/A. -->
+
+      <!-- 1. Act today — deterioration + safety + care-delivery with live flags -->
+      ${clinical}
       ${safety}
       ${continence}
-      ${clinical}
-      ${wellbeing}
-      ${specialist}
-      ${wounds}
 
-      <!-- Monitoring schedule (§19.14) -->
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Monitoring schedule</p>
-        ${sched.length ? html`<div class="space-y-2">${map(sched, (m) => html`<div class="card p-3.5">
-          <div class="flex items-center justify-between gap-2"><p class="text-sm font-semibold text-ink-900">${esc(m.obs)}</p><span class="badge bg-primary-50 text-primary-700 ring-primary-100">${esc(m.freq)}</span></div>
-          <p class="text-[12px] text-ink-500 mt-1">Until ${esc(m.until)} · requested by ${esc(m.by)}</p>
-          <p class="text-[12px] text-ink-400">${esc(m.reason)}</p>
-        </div>`)}</div>` : `<div class="card p-3.5 text-[13px] text-ink-500">No active monitoring schedule.</div>`}
-      </div>
-
-      <!-- Repositioning chart (§19.15/16) -->
+      <!-- Repositioning (§19.15/16) — pressure care; an overdue turn is time-critical -->
       ${plan ? html`<div>
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Repositioning · every ${plan.intervalH}h · shared across carers</p>
         <div class="rounded-xl ${overdue ? 'bg-danger-50 ring-danger-100' : 'bg-success-50 ring-success-100'} ring-1 p-3 mb-2 flex items-center gap-2 text-[13px] ${overdue ? 'text-danger-800' : 'text-success-800'}">
@@ -485,6 +474,24 @@ export function renderMonitoring({ id }) {
           </div>`) : '<p class="text-[13px] text-ink-400 text-center py-4">No turns recorded.</p>'}
         </div>
       </div>` : ''}
+
+      <!-- 2. Daily story — the ongoing days-scale trend -->
+      ${trends}
+      ${wellbeing}
+
+      <!-- 3. Chronic / condition-specific tracking -->
+      ${wounds}
+      ${specialist}
+
+      <!-- 4. Reference — what the office/GP asked us to monitor, and the glossary -->
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Monitoring schedule</p>
+        ${sched.length ? html`<div class="space-y-2">${map(sched, (m) => html`<div class="card p-3.5">
+          <div class="flex items-center justify-between gap-2"><p class="text-sm font-semibold text-ink-900">${esc(m.obs)}</p><span class="badge bg-primary-50 text-primary-700 ring-primary-100">${esc(m.freq)}</span></div>
+          <p class="text-[12px] text-ink-500 mt-1">Until ${esc(m.until)} · requested by ${esc(m.by)}</p>
+          <p class="text-[12px] text-ink-400">${esc(m.reason)}</p>
+        </div>`)}</div>` : `<div class="card p-3.5 text-[13px] text-ink-500">No active monitoring schedule.</div>`}
+      </div>
 
       <!-- Structured wound vocabulary (§19.20) -->
       <details class="card p-3.5"><summary class="text-sm font-semibold text-ink-900 cursor-pointer list-none flex items-center gap-2">${icon('activity', 'w-4 h-4 text-ink-400')}Structured wound assessment vocabulary</summary>
