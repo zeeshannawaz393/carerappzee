@@ -637,7 +637,7 @@ export function registerCarerApp(Alpine) {
         temperature: 'bg-red-50 text-red-600', pulse: 'bg-rose-50 text-rose-600',
         respirations: 'bg-sky-50 text-sky-600', bp: 'bg-violet-50 text-violet-600',
         spo2: 'bg-cyan-50 text-cyan-600', glucose: 'bg-amber-50 text-amber-600',
-        news2: 'bg-indigo-50 text-indigo-600', pain: 'bg-orange-50 text-orange-600',
+        news2: 'bg-indigo-50 text-indigo-600', restore2: 'bg-danger-50 text-danger-600', pain: 'bg-orange-50 text-orange-600',
         mood: 'bg-yellow-50 text-yellow-700', sleep: 'bg-indigo-50 text-indigo-600',
         behaviour: 'bg-purple-50 text-purple-600', seizure: 'bg-amber-50 text-amber-600',
         fluid: 'bg-blue-50 text-blue-600', food: 'bg-orange-50 text-orange-600',
@@ -800,7 +800,7 @@ function fieldControls(loopExpr) {
             </template>
           </div>
         </template>
-        <template x-if="f.type==='textarea'"><textarea x-model="form[f.key]" rows="3" class="field px-3 py-2" placeholder="Type a note…"></textarea></template>
+        <template x-if="f.type==='textarea'"><textarea x-model="form[f.key]" rows="3" class="field px-3 py-2" :placeholder="f.placeholder || 'Type a note…'"></textarea></template>
         <template x-if="f.type==='text'"><input type="text" x-model="form[f.key]" class="field field-md" placeholder="…" /></template>
         <template x-if="f.type==='datetime'"><input type="time" x-model="form[f.key]" class="field field-md" /></template>
         <template x-if="f.type==='signature'">

@@ -904,6 +904,13 @@ export const OBSERVATION_TYPES = [
     fields: [{ key: 'value', label: 'Blood glucose', type: 'number', unit: 'mmol/L', required: true, min: 1, max: 40, step: 0.1, normalMin: 4, normalMax: 9 }, { key: 'relation', label: 'Meal relation', type: 'select', options: ['Before meal', 'After meal', 'Fasting', 'Random'] }] },
   { id: 'news2', name: 'NEWS2 score', icon: 'clipboard-list', group: 'Vital signs',
     fields: [{ key: 'value', label: 'NEWS2 total', type: 'score', min: 0, max: 12, required: true, escalateAtGte: 5 }, { key: 'note', label: 'Action taken', type: 'textarea' }] },
+  { id: 'restore2', name: 'Deterioration · soft signs', icon: 'alert', group: 'Vital signs',
+    fields: [
+      { key: 'signs', label: 'New soft signs (RESTORE2)', type: 'checklist', abnormalIfAny: true,
+        options: ['More breathless', 'New / worse confusion', 'More drowsy / less responsive', 'Eating / drinking less', 'New or worse pain', 'More agitated or withdrawn', 'Pale / mottled / clammy', 'Passing less urine', 'Just “not right”'] },
+      { key: 'escalated', label: 'Escalated to', type: 'select', options: ['Not yet — recording only', 'Office / manager', 'GP', 'NHS 111', '999 / ambulance'] },
+      { key: 'sbard', label: 'SBARD handover — read this to them', type: 'textarea', placeholder: 'Situation: who you are, the person, the concern. Background: conditions, DNACPR/ReSPECT. Assessment: soft signs / NEWS2 / obs. Recommendation: what you think is needed. Decision: what was agreed.' },
+      { key: 'outcome', label: 'Advice / outcome recorded', type: 'textarea' }] },
   { id: 'pain', name: 'Pain score', icon: 'frown', group: 'Wellbeing',
     fields: [{ key: 'value', label: 'Pain (0–10)', type: 'score', min: 0, max: 10, required: true, escalateAtGte: 7 }, { key: 'site', label: 'Site', type: 'text' }, { key: 'note', label: 'Comment', type: 'textarea' }] },
   { id: 'mood', name: 'Mood & wellbeing', icon: 'smile', group: 'Wellbeing',
@@ -944,6 +951,7 @@ export function evaluateObsFlag(type, values) {
       if ((f.normalMin != null && num < f.normalMin) || (f.normalMax != null && num > f.normalMax)) return 'abnormal'
     }
     if (f.type === 'score' && f.escalateAtGte != null && Number(v) >= f.escalateAtGte) return 'abnormal'
+    if (f.type === 'checklist' && f.abnormalIfAny && Array.isArray(v) && v.length) return 'abnormal'
     if (f.abnormalValues && f.abnormalValues.includes(String(v))) return 'abnormal'
   }
   return 'normal'
