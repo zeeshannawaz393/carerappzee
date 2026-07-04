@@ -40,6 +40,9 @@ const TREND_HISTORY = {
     // Safety & medication (quick-win charts from data we already capture)
     medPct: [100, 100, 75, 100, 75, 100, 100], // % of due doses given per day
     incidents: [{ ago: 5, type: 'Fall / slip' }, { ago: 19, type: 'Near miss' }], // last 30 days
+    // Specialist (condition-gated)
+    behaviour: ['Settled', 'Settled', 'Agitated', 'Settled', 'Sundowning', 'Agitated', 'Settled'],
+    seizure: [{ ago: 8, type: 'Tonic-clonic', dur: 95 }, { ago: 21, type: 'Absence', dur: 12 }],
   },
 }
 const barColor = (v, t) => (v >= t ? 'bg-success-500' : v >= t * 0.6 ? 'bg-info-500' : 'bg-warning-500')
@@ -276,6 +279,37 @@ function buildSafety(h, meds, incs) {
   return section('Safety &amp; medication', cards.join(''))
 }
 
+/* ---- Specialist (condition-gated): ABC behaviour + seizure log ---- */
+function buildSpecialist(h, live) {
+  const cards = []
+
+  if (h.behaviour) {
+    const bh = h.behaviour.slice()
+    const lb = liveOf(live, 'behaviour'); if (lb.length) { const v = lb[0].values.behaviour; if (v) bh[bh.length - 1] = v }
+    const bcol = (v) => (/aggress|wander/i.test(v) ? 'bg-danger-500' : /agitat|sundown|withdraw/i.test(v) ? 'bg-warning-500' : 'bg-success-500')
+    const unsettled = bh.filter((v) => /aggress|wander|agitat|sundown|withdraw/i.test(v)).length
+    cards.push(trendCard('bg-purple-500 text-white', 'brain', 'Behaviour (BPSD)',
+      chip(unsettled >= 3 ? 'warning' : 'success', unsettled >= 3 ? `${unsettled} unsettled` : 'Mostly settled'), html`
+      <div class="flex gap-1.5">${bh.map((v, i) => `<div class="flex-1"><div class="aspect-square rounded-md ${bcol(v)}" title="${esc(v)}"></div><span class="block text-center text-[9px] text-ink-400 mt-1 font-semibold">${TREND_DAYS[i]}</span></div>`).join('')}</div>
+      <p class="text-[12px] text-ink-500 mt-2">Latest: <b class="text-ink-700">${esc(bh[bh.length - 1])}</b></p>
+      ${trendNote(unsettled >= 3 ? 'warning' : 'ink', unsettled >= 3 ? '<b>Several unsettled days</b> — log antecedent &amp; trigger (ABC) and review with the team.' : 'Behaviour mostly settled this week.')}`))
+  }
+
+  if (h.seizure) {
+    const lz = liveOf(live, 'seizure').map((o) => ({ ago: 0, type: o.values.type, dur: Number(o.values.duration) || 0 }))
+    const all = [...lz, ...h.seizure]
+    const since = all.length ? Math.min(...all.map((s) => s.ago)) : null
+    const last = all[0]
+    cards.push(trendCard('bg-amber-500 text-white', 'zap', 'Seizures',
+      chip(all.length ? 'warning' : 'success', all.length ? `${all.length} in 30d` : 'None'), html`
+      <p class="text-lg font-bold text-ink-900">${since != null ? `<span class="tabular-nums">${since}</span> day${since === 1 ? '' : 's'} since last` : 'None recorded'}</p>
+      <p class="text-[12px] text-ink-500">${last ? `Last: ${esc(last.type)} &middot; ${last.dur}s` : ''}</p>
+      ${trendNote('ink', 'Frequency, type &amp; duration for epilepsy management — a seizure over 5 minutes is a 999 emergency.')}`))
+  }
+
+  return section('Specialist', cards.join(''))
+}
+
 export function renderMonitoring({ id }) {
   const su = getServiceUser(id)
   if (!su) return notFound('#/carer/clients')
@@ -297,6 +331,7 @@ export function renderMonitoring({ id }) {
   const safety = h ? buildSafety(h, meds, incs) : ''
   const clinical = h ? buildClinical(h, live, su) : ''
   const wellbeing = h ? buildWellbeing(h, live) : ''
+  const specialist = h ? buildSpecialist(h, live) : ''
 
   const inner = html`
     ${flowHeader({ title: 'Monitoring', subtitle: esc(su.name), back: `#/carer/clients/${id}/history` })}
@@ -310,6 +345,7 @@ export function renderMonitoring({ id }) {
       ${safety}
       ${clinical}
       ${wellbeing}
+      ${specialist}
 
       <!-- Monitoring schedule (§19.14) -->
       <div>
