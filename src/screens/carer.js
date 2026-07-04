@@ -1243,11 +1243,10 @@ export function renderCarerVisit({ visit }) {
             </div>
           </div>
 
-          <!-- clock-out -->
+          <!-- end of visit — single path: review + sign + clock out (the summary sheet) -->
           <div x-show="clock.in && !clock.out" class="pt-1">
             <div x-show="blocking.length" x-cloak class="rounded-lg bg-warning-50 ring-1 ring-warning-100 p-2.5 mb-2.5"><p class="text-xs font-semibold text-warning-800 flex items-center gap-1.5">${icon('alert', 'w-3.5 h-3.5')}<span x-text="blocking.length+' required before clock-out'"></span></p><p class="text-xs text-warning-700 mt-0.5" x-text="blocking.join(', ')"></p></div>
-            <button @click="sheet='summary'" class="btn btn-secondary btn-md w-full mb-2">${icon('list', 'w-4 h-4')}Review visit summary</button>
-            <button @click="startClockOut()" :disabled="!canClockOut" class="btn btn-lg w-full" :class="canClockOut ? 'btn-primary' : 'btn-secondary opacity-60'">${icon('check-circle', 'w-5 h-5')}<span x-text="canClockOut ? 'Complete visit & clock out' : 'Record required items first'"></span></button>
+            <button @click="sheet='summary'" class="btn btn-primary btn-lg w-full">${icon('list', 'w-4 h-4')}Review &amp; clock out</button>
           </div>
         </div>
 
@@ -1399,11 +1398,11 @@ export function renderCarerVisit({ visit }) {
             </div>
           </div>
 
-          <!-- end of visit — clock-out lives here on the review tab as well as on Tasks -->
+          <!-- end of visit — same single review+sign+clock-out path as the Tasks tab -->
           <div x-show="clock.in && !clock.out" x-cloak>
             <p class="section-title mb-2.5">End of visit</p>
             <div x-show="blocking.length" x-cloak class="rounded-lg bg-warning-50 ring-1 ring-warning-100 p-2.5 mb-2.5"><p class="text-xs font-semibold text-warning-800 flex items-center gap-1.5">${icon('alert', 'w-3.5 h-3.5')}<span x-text="blocking.length+' required before clock-out'"></span></p><p class="text-xs text-warning-700 mt-0.5" x-text="blocking.join(', ')"></p></div>
-            <button @click="startClockOut()" :disabled="!canClockOut" class="btn btn-lg w-full" :class="canClockOut ? 'btn-primary' : 'btn-secondary opacity-60'">${icon('check-circle', 'w-5 h-5')}<span x-text="canClockOut ? 'Complete visit & clock out' : 'Record required items first'"></span></button>
+            <button @click="sheet='summary'" class="btn btn-primary btn-lg w-full">${icon('list', 'w-4 h-4')}Review &amp; clock out</button>
           </div>
           <div x-show="clock.out && !geoLocked" x-cloak class="rounded-xl bg-success-50 ring-1 ring-success-100 p-3.5 text-center text-sm font-semibold text-success-700 flex items-center justify-center gap-1.5">${icon('check-circle', 'w-4 h-4')}Visit clocked out at <span x-text="clock.out"></span></div>
         </div>
