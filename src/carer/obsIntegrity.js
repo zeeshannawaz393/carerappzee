@@ -37,6 +37,9 @@ const TREND_HISTORY = {
     mood: ['happy', 'content', 'settled', 'low', 'low', 'content', 'low'],
     sleep: [6.5, 5, 7, 4.5, 6, 3.5, 5.5],
     pain: [2, 3, 2, 4, 5, 3, 4],
+    // Safety & medication (quick-win charts from data we already capture)
+    medPct: [100, 100, 75, 100, 75, 100, 100], // % of due doses given per day
+    incidents: [{ ago: 5, type: 'Fall / slip' }, { ago: 19, type: 'Near miss' }], // last 30 days
   },
 }
 const barColor = (v, t) => (v >= t ? 'bg-success-500' : v >= t * 0.6 ? 'bg-info-500' : 'bg-warning-500')
@@ -234,6 +237,45 @@ function buildWellbeing(h, live) {
   return section('Wellbeing', cards.join(''))
 }
 
+/* ---- Safety & medication (built from data we already capture) ---- */
+function buildSafety(h, meds, incs) {
+  const cards = []
+
+  // Medication adherence — % of due doses given per day, live "today" from eMAR
+  if (h.medPct) {
+    const pct = h.medPct.slice()
+    const givenL = meds.filter((m) => m.status === 'completed').length
+    const notL = meds.filter((m) => ['refused', 'unable', 'partial'].includes(m.status)).length
+    if (givenL + notL > 0) pct[pct.length - 1] = Math.round((givenL / (givenL + notL)) * 100)
+    const cur = pct[pct.length - 1]
+    const avg = Math.round(pct.reduce((a, b) => a + b, 0) / pct.length)
+    const tone = avg >= 95 ? 'success' : avg >= 85 ? 'warning' : 'danger'
+    const bColor = (v) => (v >= 95 ? 'bg-success-500' : v >= 85 ? 'bg-warning-500' : 'bg-danger-500')
+    cards.push(trendCard('bg-danger-500 text-white', 'pill', 'Medication adherence',
+      chip(tone, `${avg}% given`), html`
+      <p class="text-2xl font-bold tabular-nums text-ink-900">${cur}% <span class="text-sm font-semibold text-ink-400">given today</span></p>
+      <div class="flex items-end gap-1.5 h-11 mt-3">${pct.map((v) => `<div class="flex-1 rounded-t ${bColor(v)}" style="height:${Math.max(6, v)}%"></div>`).join('')}</div>
+      <div class="flex gap-1.5 mt-1">${dayLabels(pct.length)}</div>
+      ${trendNote(tone === 'success' ? 'ink' : tone, 'Every refused / missed dose is coded on the eMAR and flagged to the office — no silent gaps.')}`))
+  }
+
+  // Falls & incidents — days-since-last-fall + 30-day tally by type
+  const demo = h.incidents || []
+  const all = [...incs.map((i) => ({ ago: 0, type: i.typeName || i.type || 'Incident' })), ...demo]
+  const falls = all.filter((x) => /fall|slip/i.test(x.type))
+  const sinceFall = falls.length ? Math.min(...falls.map((f) => f.ago)) : null
+  const byType = {}; all.forEach((x) => (byType[x.type] = (byType[x.type] || 0) + 1))
+  const recentFall = sinceFall != null && sinceFall <= 7
+  const iTone = recentFall ? 'warning' : all.length ? 'ink' : 'success'
+  cards.push(trendCard('bg-warning-500 text-white', 'alert', 'Falls &amp; incidents',
+    chip(recentFall ? 'warning' : 'success', all.length ? `${all.length} in 30d` : 'None'), html`
+    <p class="text-lg font-bold text-ink-900">${sinceFall != null ? `<span class="tabular-nums">${sinceFall}</span> day${sinceFall === 1 ? '' : 's'} since last fall` : 'No falls recorded'}</p>
+    <div class="flex flex-wrap gap-1.5 mt-2.5">${Object.entries(byType).map(([t, n]) => `<span class="badge bg-ink-50 text-ink-600 ring-ink-200">${esc(t)} &middot; ${n}</span>`).join('') || '<span class="text-[12px] text-ink-400">Nothing in the last 30 days.</span>'}</div>
+    ${trendNote(iTone === 'ink' ? 'ink' : recentFall ? 'warning' : 'ink', 'Trend of accidents/near-misses for learning from events (CQC) &mdash; a fall triggers a post-fall observation set.')}`))
+
+  return section('Safety &amp; medication', cards.join(''))
+}
+
 export function renderMonitoring({ id }) {
   const su = getServiceUser(id)
   if (!su) return notFound('#/carer/clients')
@@ -248,8 +290,11 @@ export function renderMonitoring({ id }) {
   // Charts read live observations for "today" so recording a drink / weight /
   // reading updates them immediately, blended with the demo trend history.
   const live = carerStore.observationsForUser(id)
+  const meds = carerStore.allMeds().filter((m) => m.suId === id)
+  const incs = carerStore.allIncidents().filter((i) => i.suId === id)
   const h = TREND_HISTORY[id]
   const trends = h ? buildTrends(h, live) : ''
+  const safety = h ? buildSafety(h, meds, incs) : ''
   const clinical = h ? buildClinical(h, live, su) : ''
   const wellbeing = h ? buildWellbeing(h, live) : ''
 
@@ -262,6 +307,7 @@ export function renderMonitoring({ id }) {
 
       <!-- Daily-trend charts (§19) — cross-visit, live "today" -->
       ${trends}
+      ${safety}
       ${clinical}
       ${wellbeing}
 
