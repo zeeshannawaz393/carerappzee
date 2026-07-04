@@ -285,6 +285,18 @@ export function registerCarerApp(Alpine) {
         short: actual != null && planned > 0 && actual < planned * 0.6,
       }
     },
+    /** One-tap emergency panic — an ACTIVE alert, distinct from the passive check-in. */
+    sos() {
+      carerStore.addMessage({ visitId: this.visitId, to: 'Office', text: `SOS — EMERGENCY. Carer needs immediate help at ${this.su.name}'s${this.su.address ? ' (' + this.su.address + ')' : ''}. Location shared.` })
+      carerStore.addInbound({ from: 'System · SOS', kind: 'sos', text: 'SOS raised — the office and on-call manager have been alerted with your location. Stay on the line if you can.' })
+      this.refresh(); this.inboxDot = true; this.sheet = null
+      window.__notify('SOS sent — office & on-call alerted with your location', 'error')
+    },
+    /** Passive "I'm OK" lone-worker check-in. */
+    safetyCheckin() {
+      carerStore.addMessage({ visitId: this.visitId, to: 'Office', text: `Lone-worker check-in — safe at ${this.su.name}'s.` })
+      this.refresh(); window.__notify('Safety check-in sent to office', 'success')
+    },
     /** Proactive "I'm running late" — notify the office before the visit even starts. */
     runningLate() {
       carerStore.addMessage({ visitId: this.visitId, to: 'Office', text: `Running late for ${this.su.name}'s ${this.rota.visit} visit (scheduled ${this.timing.schedLabel}).` })
@@ -1722,7 +1734,12 @@ export function renderCarerVisit({ visit }) {
             <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
               <div class="card p-3.5"><label class="label">Message the office</label><textarea x-model="msgText" rows="3" class="field px-3 py-2" placeholder="Type a message…"></textarea></div>
               <button @click="window.__notify('Calling on-call manager…','info')" class="btn btn-secondary btn-md w-full">${icon('bell', 'w-4 h-4')}Call on-call manager</button>
-              <div class="rounded-xl bg-danger-50 ring-1 ring-danger-100 p-3.5"><p class="section-title text-danger-700 mb-1 flex items-center gap-1.5">${icon('shield', 'w-3.5 h-3.5')}Lone worker</p><button @click="window.__notify('Safety check-in sent to office','success')" class="btn btn-danger btn-md w-full mt-1">Send safety check-in</button></div>
+              <div class="rounded-xl bg-danger-50 ring-1 ring-danger-200 p-3.5">
+                <p class="section-title text-danger-700 mb-2 flex items-center gap-1.5">${icon('shield', 'w-3.5 h-3.5')}Lone worker</p>
+                <button @click="sos()" class="btn btn-danger btn-lg w-full ring-2 ring-danger-200 ring-offset-2">${icon('alert', 'w-5 h-5')}SOS — send emergency alert</button>
+                <p class="text-[11px] text-danger-600 mt-1.5 text-center">One tap — alerts the office &amp; on-call with your location, now.</p>
+                <button @click="safetyCheckin()" class="btn btn-secondary btn-md w-full mt-2.5">${icon('check-circle', 'w-4 h-4')}I'm safe — send check-in</button>
+              </div>
             </div>
             <div class="p-4 border-t border-ink-200 bg-surface shrink-0"><button @click="sendMessage()" :disabled="!msgText" class="btn btn-lg w-full" :class="msgText ? 'btn-primary' : 'btn-secondary opacity-60'">Send to office</button></div>
           </div>
