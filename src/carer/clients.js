@@ -18,6 +18,29 @@ function tone(color) {
   return { warning: 'bg-warning-100 text-warning-700', teal: 'bg-teal-100 text-teal-700', danger: 'bg-danger-100 text-danger-700', primary: 'bg-primary-100 text-primary-700' }[color] || 'bg-primary-100 text-primary-700'
 }
 
+/* Semantic icon colour — soft tinted chip per glyph so a row/card's icon
+   actually reads as what it represents (mirrors the observation obsTint). */
+const ICON_TINT = {
+  brain: 'bg-purple-50 text-purple-600', wind: 'bg-sky-50 text-sky-600',
+  droplet: 'bg-blue-50 text-blue-600', pill: 'bg-rose-50 text-rose-600',
+  footprints: 'bg-orange-50 text-orange-600', 'rotate-cw': 'bg-teal-50 text-teal-600',
+  'person-standing': 'bg-pink-50 text-pink-600', heart: 'bg-rose-50 text-rose-600',
+  'heart-pulse': 'bg-rose-50 text-rose-600', users: 'bg-primary-50 text-primary-600',
+  utensils: 'bg-amber-50 text-amber-600', soup: 'bg-amber-50 text-amber-600',
+  'glass-water': 'bg-blue-50 text-blue-600', shield: 'bg-violet-50 text-violet-600',
+  'file-check': 'bg-primary-50 text-primary-600', chart: 'bg-indigo-50 text-indigo-600',
+  scale: 'bg-amber-50 text-amber-600', archive: 'bg-slate-100 text-slate-600',
+  refresh: 'bg-teal-50 text-teal-600', target: 'bg-emerald-50 text-emerald-600',
+  'user-check': 'bg-teal-50 text-teal-600', 'clipboard-list': 'bg-indigo-50 text-indigo-600',
+  'map-pin': 'bg-ink-100 text-ink-500', thermometer: 'bg-red-50 text-red-600',
+  gauge: 'bg-violet-50 text-violet-600', moon: 'bg-indigo-50 text-indigo-600',
+  toilet: 'bg-amber-50 text-amber-700', activity: 'bg-cyan-50 text-cyan-600',
+}
+const iconTint = (n) => ICON_TINT[n] || 'bg-ink-100 text-ink-600'
+/* Visits coloured by time of day. */
+const VISIT_TINT = { Morning: 'bg-amber-50 text-amber-600', Lunch: 'bg-primary-50 text-primary-600', Tea: 'bg-teal-50 text-teal-600', Bedtime: 'bg-indigo-50 text-indigo-600' }
+const visitTint = (v) => VISIT_TINT[v] || 'bg-ink-100 text-ink-600'
+
 export function renderClients() {
   const people = caseload()
   const inner = html`
@@ -65,9 +88,9 @@ export function renderClientProfile({ id }) {
   const allergyOk = s.allergyStatus === 'confirmed'
 
   // Neutral (monochrome) list rows — colour reserved for the safety block.
-  const link = (ic, label, href, note) => `<a href="${href}" class="block p-4 flex items-center gap-3 active:bg-ink-50"><span class="w-9 h-9 rounded-xl bg-ink-100 text-ink-600 grid place-items-center shrink-0">${icon(ic, 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${label}</p>${note ? `<p class="text-xs text-ink-500">${note}</p>` : ''}</div>${icon('chevron-right', 'w-4 h-4 text-ink-300')}</a>`
+  const link = (ic, label, href, note) => `<a href="${href}" class="block p-4 flex items-center gap-3 active:bg-ink-50"><span class="w-9 h-9 rounded-xl ${iconTint(ic)} grid place-items-center shrink-0">${icon(ic, 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${label}</p>${note ? `<p class="text-xs text-ink-500">${note}</p>` : ''}</div>${icon('chevron-right', 'w-4 h-4 text-ink-300')}</a>`
   const group = (title, rows) => `<div><p class="section-title mb-2">${title}</p><div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">${rows.join('')}</div></div>`
-  const contactRow = (ic, label, value) => `<div class="p-4 flex items-center gap-3"><span class="w-9 h-9 rounded-xl bg-ink-100 text-ink-600 grid place-items-center shrink-0">${icon(ic, 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${label}</p><p class="text-xs text-ink-500 truncate">${esc(value || '—')}</p></div>${label === 'Emergency contact' ? `<button onclick="window.__notify('Calling…','info')" class="btn btn-secondary btn-sm">Call</button>` : ''}</div>`
+  const contactRow = (ic, label, value) => `<div class="p-4 flex items-center gap-3"><span class="w-9 h-9 rounded-xl ${iconTint(ic)} grid place-items-center shrink-0">${icon(ic, 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${label}</p><p class="text-xs text-ink-500 truncate">${esc(value || '—')}</p></div>${label === 'Emergency contact' ? `<button onclick="window.__notify('Calling…','info')" class="btn btn-secondary btn-sm">Call</button>` : ''}</div>`
 
   const inner = html`
     ${flowHeader({ title: s.name, subtitle: `${s.age} yrs · NHS ${esc(s.nhs)}`, back: '#/carer/clients' })}
@@ -86,16 +109,16 @@ export function renderClientProfile({ id }) {
       </div>
 
       <!-- today's visits -->
-      ${todays.length ? `<div><p class="section-title mb-2">Today’s visits</p><div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">${todays.map((t) => `<a href="#/carer/visit/${t.rota.id}" class="block p-4 flex items-center gap-3 active:bg-ink-50"><span class="w-9 h-9 rounded-xl bg-ink-100 text-ink-600 grid place-items-center shrink-0">${icon('clock', 'w-4 h-4')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(t.rota.visit)} visit</p><p class="text-xs text-ink-500">${esc(t.rota.time)}</p></div><span class="text-xs font-medium text-ink-500 tabular-nums">${t.prog.done}/${t.prog.total}</span></a>`).join('')}</div></div>` : ''}
+      ${todays.length ? `<div><p class="section-title mb-2">Today’s visits</p><div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">${todays.map((t) => `<a href="#/carer/visit/${t.rota.id}" class="block p-4 flex items-center gap-3 active:bg-ink-50"><span class="w-9 h-9 rounded-xl ${visitTint(t.rota.visit)} grid place-items-center shrink-0">${icon('clock', 'w-4 h-4')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(t.rota.visit)} visit</p><p class="text-xs text-ink-500">${esc(t.rota.time)}</p></div><span class="text-xs font-medium text-ink-500 tabular-nums">${t.prog.done}/${t.prog.total}</span></a>`).join('')}</div></div>` : ''}
 
       <!-- care plan essentials (clinical detail behind the flags) -->
-      ${careRows.length ? `<div class="card p-4"><p class="section-title mb-3 flex items-center gap-1.5">${icon('file-check', 'w-3.5 h-3.5')}Care plan essentials</p><div class="space-y-3.5">${careRows.map((r) => `<div class="flex gap-3"><span class="w-8 h-8 rounded-lg bg-ink-100 text-ink-600 grid place-items-center shrink-0">${icon(r.icon || 'file-check', 'w-4 h-4')}</span><div class="min-w-0 flex-1"><p class="text-sm font-semibold text-ink-900">${esc(r.label)}</p>${(r.lines || []).map((l, i) => `<p class="text-xs ${i === r.lines.length - 1 && r.lines.length > 1 ? 'text-ink-500 mt-1' : 'text-ink-600 mt-0.5'}">${esc(l)}</p>`).join('')}</div></div>`).join('')}</div></div>` : ''}
+      ${careRows.length ? `<div class="card p-4"><p class="section-title mb-3 flex items-center gap-1.5">${icon('file-check', 'w-3.5 h-3.5')}Care plan essentials</p><div class="space-y-3.5">${careRows.map((r) => `<div class="flex gap-3"><span class="w-8 h-8 rounded-lg ${iconTint(r.icon || 'file-check')} grid place-items-center shrink-0">${icon(r.icon || 'file-check', 'w-4 h-4')}</span><div class="min-w-0 flex-1"><p class="text-sm font-semibold text-ink-900">${esc(r.label)}</p>${(r.lines || []).map((l, i) => `<p class="text-xs ${i === r.lines.length - 1 && r.lines.length > 1 ? 'text-ink-500 mt-1' : 'text-ink-600 mt-0.5'}">${esc(l)}</p>`).join('')}</div></div>`).join('')}</div></div>` : ''}
 
       <!-- communication & sensory (AIS) -->
       ${s.commsNeeds ? html`<div class="card p-4"><p class="section-title mb-1.5 flex items-center gap-1.5">${icon('info', 'w-3.5 h-3.5')}Communication & sensory (AIS)</p><div class="flex flex-wrap gap-1.5">${[s.commsNeeds.hearing && s.commsNeeds.hearing !== 'Good' ? 'Hearing: ' + s.commsNeeds.hearing : '', s.commsNeeds.vision && s.commsNeeds.vision !== 'Reading glasses' ? s.commsNeeds.vision : '', s.commsNeeds.easyRead ? 'Easy Read' : '', s.commsNeeds.largePrint ? 'Large print' : '', s.commsNeeds.bsl ? 'BSL' : ''].filter(Boolean).map((x) => `<span class="badge bg-info-50 text-info-600 ring-info-100">${esc(x)}</span>`).join('')}</div>${s.commsNeeds.aid ? `<p class="text-sm text-ink-600 mt-1.5">${esc(s.commsNeeds.aid)}</p>` : ''}</div>` : ''}
 
       <!-- lead carer / continuity -->
-      <div class="card p-4 flex items-center gap-3"><span class="w-9 h-9 rounded-xl bg-ink-100 text-ink-600 grid place-items-center shrink-0">${icon('user-check', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">Lead carer · ${esc(leadCarerFor(id))}</p><p class="text-xs text-ink-500">${continuityFor(id).regular ? 'Regular team' : 'Cover — reduced continuity'} · ${continuityFor(id).visits30d} visits/30d</p></div></div>
+      <div class="card p-4 flex items-center gap-3"><span class="w-9 h-9 rounded-xl ${iconTint('user-check')} grid place-items-center shrink-0">${icon('user-check', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">Lead carer · ${esc(leadCarerFor(id))}</p><p class="text-xs text-ink-500">${continuityFor(id).regular ? 'Regular team' : 'Cover — reduced continuity'} · ${continuityFor(id).visits30d} visits/30d</p></div></div>
 
       <!-- care record (grouped, de-duplicated) -->
       ${group('Care & clinical', [
