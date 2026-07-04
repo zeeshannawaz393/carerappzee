@@ -37,9 +37,11 @@ const ICON_TINT = {
   toilet: 'bg-amber-50 text-amber-700', activity: 'bg-cyan-50 text-cyan-600',
 }
 const iconTint = (n) => ICON_TINT[n] || 'bg-ink-100 text-ink-600'
-/* Visits coloured by time of day. */
-const VISIT_TINT = { Morning: 'bg-amber-50 text-amber-600', Lunch: 'bg-primary-50 text-primary-600', Tea: 'bg-teal-50 text-teal-600', Bedtime: 'bg-indigo-50 text-indigo-600' }
+/* Visits get a time-of-day icon + colour: dawn -> day -> dusk -> night. */
+const VISIT_TINT = { Morning: 'bg-amber-50 text-amber-600', Lunch: 'bg-sky-50 text-sky-600', Tea: 'bg-orange-50 text-orange-600', Bedtime: 'bg-indigo-50 text-indigo-600' }
 const visitTint = (v) => VISIT_TINT[v] || 'bg-ink-100 text-ink-600'
+const VISIT_ICON = { Morning: 'sunrise', Lunch: 'sun', Tea: 'sunset', Bedtime: 'moon' }
+const visitIcon = (v) => VISIT_ICON[v] || 'clock'
 
 export function renderClients() {
   const people = caseload()
@@ -109,7 +111,7 @@ export function renderClientProfile({ id }) {
       </div>
 
       <!-- today's visits -->
-      ${todays.length ? `<div><p class="section-title mb-2">Today’s visits</p><div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">${todays.map((t) => `<a href="#/carer/visit/${t.rota.id}" class="block p-4 flex items-center gap-3 active:bg-ink-50"><span class="w-9 h-9 rounded-xl ${visitTint(t.rota.visit)} grid place-items-center shrink-0">${icon('clock', 'w-4 h-4')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(t.rota.visit)} visit</p><p class="text-xs text-ink-500">${esc(t.rota.time)}</p></div><span class="text-xs font-medium text-ink-500 tabular-nums">${t.prog.done}/${t.prog.total}</span></a>`).join('')}</div></div>` : ''}
+      ${todays.length ? `<div><p class="section-title mb-2">Today’s visits</p><div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">${todays.map((t) => `<a href="#/carer/visit/${t.rota.id}" class="block p-4 flex items-center gap-3 active:bg-ink-50"><span class="w-9 h-9 rounded-xl ${visitTint(t.rota.visit)} grid place-items-center shrink-0">${icon(visitIcon(t.rota.visit), 'w-4 h-4')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(t.rota.visit)} visit</p><p class="text-xs text-ink-500">${esc(t.rota.time)}</p></div><span class="text-xs font-medium text-ink-500 tabular-nums">${t.prog.done}/${t.prog.total}</span></a>`).join('')}</div></div>` : ''}
 
       <!-- care plan essentials (clinical detail behind the flags) -->
       ${careRows.length ? `<div class="card p-4"><p class="section-title mb-3 flex items-center gap-1.5">${icon('file-check', 'w-3.5 h-3.5')}Care plan essentials</p><div class="space-y-3.5">${careRows.map((r) => `<div class="flex gap-3"><span class="w-8 h-8 rounded-lg ${iconTint(r.icon || 'file-check')} grid place-items-center shrink-0">${icon(r.icon || 'file-check', 'w-4 h-4')}</span><div class="min-w-0 flex-1"><p class="text-sm font-semibold text-ink-900">${esc(r.label)}</p>${(r.lines || []).map((l, i) => `<p class="text-xs ${i === r.lines.length - 1 && r.lines.length > 1 ? 'text-ink-500 mt-1' : 'text-ink-600 mt-0.5'}">${esc(l)}</p>`).join('')}</div></div>`).join('')}</div></div>` : ''}
