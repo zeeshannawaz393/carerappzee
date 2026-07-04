@@ -47,6 +47,10 @@ function taskFromDef(rawId, def, i) {
     why: tpl?.purpose || tpl?.description || '',
     isMed: (def.type || tpl?.type) === 'medication',
     medIds: def.medIds || tpl?.medIds || [],
+    // Observation-shaped tasks (mood, fluid, skin, food) are satisfied by
+    // recording the linked observation, not a separate task-outcome sheet.
+    obsId: def.obsId || tpl?.obsId || '',
+    isObs: !!(def.obsId || tpl?.obsId),
     twoPerson: (tpl?.dependencies || []).some((dep) => /two carer/i.test(dep)),
     required: REQUIRED_RULES.includes(tpl?.completionRule) || ['essential', 'critical'].includes(def.priority || tpl?.priority),
     fields,
@@ -68,11 +72,15 @@ export function buildVisit(visitId) {
 
 /** Progress used on the home rota (tasks + scheduled meds). */
 export function visitProgressFor(v) {
-  // Medication tasks are counted via their scheduled meds (eMAR), not as tasks.
+  // Medication tasks are counted via their scheduled meds (eMAR); observation
+  // tasks via their linked observation — neither is counted as a plain task.
   const hasMeds = v.meds.scheduled.length > 0
-  const tasks = v.tasks.filter((t) => !(t.isMed && hasMeds))
-  const total = tasks.length + v.meds.scheduled.length
+  const tasks = v.tasks.filter((t) => !(t.isMed && hasMeds) && !t.isObs)
+  const obsTasks = v.tasks.filter((t) => t.isObs)
+  const obs = carerStore.observations(v.rota.id)
+  const total = tasks.length + obsTasks.length + v.meds.scheduled.length
   let done = tasks.filter((t) => carerStore.task(v.rota.id, t.id)).length
+  done += obsTasks.filter((t) => obs.some((o) => o.typeId === t.obsId)).length
   done += v.meds.scheduled.filter((m) => carerStore.medRecord(v.rota.id, m.id)).length
   return { done, total, pct: total ? Math.round((done / total) * 100) : 0 }
 }
@@ -159,27 +167,54 @@ export function registerCarerApp(Alpine) {
     get abnormalObsCount() { return this.observations.filter((o) => o.flag === 'abnormal').length },
     get sortedObs() { return [...this.observations].sort((a, b) => (b.flag === 'abnormal') - (a.flag === 'abnormal')) },
     get progress() {
-      // Medication tasks are represented by their scheduled meds (recorded on the
-      // eMAR), so exclude them here to avoid double-counting.
-      const tasks = this.tasks.filter((t) => !(t.isMed && this.medsForTask(t).length))
-      const total = tasks.length + this.scheduled.length
-      let done = tasks.filter((t) => t.record).length + this.scheduled.filter((m) => this.medRec(m.id)).length
+      // Medication tasks are represented by their scheduled meds (eMAR) and
+      // observation tasks by their linked observation, so exclude both here and
+      // count them through their own records to avoid double-counting.
+      const tasks = this.tasks.filter((t) => !(t.isMed && this.medsForTask(t).length) && !t.isObs)
+      const obsTasks = this.tasks.filter((t) => t.isObs)
+      const total = tasks.length + obsTasks.length + this.scheduled.length
+      const done = tasks.filter((t) => t.record).length + obsTasks.filter((t) => this.obsTaskDone(t)).length + this.scheduled.filter((m) => this.medRec(m.id)).length
       return { done, total, pct: total ? Math.round((done / total) * 100) : 0 }
     },
     get blocking() {
-      // A medication task is satisfied by recording its scheduled meds on the eMAR.
-      const t = this.tasks.filter((x) => x.required && !x.record && !(x.isMed && this.medsForTask(x).length))
+      // A medication task is satisfied on the eMAR; an observation task by
+      // recording its linked observation.
+      const t = this.tasks.filter((x) => x.required && !(x.isMed && this.medsForTask(x).length) && !x.isObs && !x.record)
+      const obs = this.tasks.filter((x) => x.required && x.isObs && !this.obsTaskDone(x))
       const meds = this.scheduled.filter((m) => !this.medRec(m.id))
-      return [...t.map((x) => x.title), ...meds.map((m) => m.name)]
+      return [...t.map((x) => x.title), ...obs.map((x) => x.title), ...meds.map((m) => m.name)]
     },
     get canClockOut() { return !!this.clock.in && this.blocking.length === 0 },
     get activeTask() { return this.tasks.find((t) => t.id === this.activeId) || null },
 
     /* ---------- status helpers ---------- */
     statusOf(t) {
-      // Medication tasks derive their status from their linked medicines (eMAR).
+      // Medication tasks derive their status from their linked medicines (eMAR);
+      // observation tasks from their linked observation.
+      if (t.isObs) return this.obsTaskStatus(t)
       if (t.isMed && this.medsForTask(t).length) return this.medTaskStatus(t)
       return t.record ? t.record.status : 'pending'
+    },
+    /* ---- observation tasks (linked to the eMAR-style Observations) ---- */
+    /** Observations of this task's linked type recorded this visit (newest first). */
+    obsForTask(t) { return t.obsId ? this.observations.filter((o) => o.typeId === t.obsId) : [] },
+    obsTaskDone(t) { return this.obsForTask(t).length > 0 },
+    /** Roll the linked observation up into a task status. */
+    obsTaskStatus(t) {
+      const recs = this.obsForTask(t)
+      if (!recs.length) return 'pending'
+      return recs.some((o) => o.flag === 'abnormal') ? 'flagged' : 'completed'
+    },
+    /** Sub-label for an observation task row: the latest reading, or a prompt. */
+    obsTaskLabel(t) {
+      const recs = this.obsForTask(t)
+      return recs.length ? this.obsSummary(recs[0]) : 'Not yet recorded'
+    },
+    /** Open the linked observation's record form straight from the task. */
+    openObsFromTask(t) {
+      const type = OBSERVATION_TYPES.find((o) => o.id === t.obsId)
+      if (!type) { window.__notify('Observation type not found', 'warning'); return }
+      this.openObs(type)
     },
     /** Roll a med task's linked-medicine eMAR outcomes up into one task status. */
     medTaskStatus(t) {
@@ -233,7 +268,10 @@ export function registerCarerApp(Alpine) {
       const w = this.clock.welfare
       const attendance = w === 'no-access' ? 'No access' : w === 'not-present' ? 'Person absent' : w === 'declined' ? 'Person refused entry' : 'Attended'
       const req = this.tasks.filter((t) => t.required)
-      const allTasksMet = req.every((t) => t.record && ['completed'].includes(t.record.status))
+      const allTasksMet = req.every((t) =>
+        t.isMed ? this.medTaskStatus(t) === 'completed'
+        : t.isObs ? this.obsTaskDone(t)
+        : (t.record && ['completed'].includes(t.record.status)))
       const medsMet = this.scheduled.every((m) => { const r = this.medRec(m.id); return r && r.planMet })
       const plannedCare = this.blocking.length ? 'Partially met' : (allTasksMet && medsMet ? 'Met' : 'Partially met')
       const careSummary = this.blocking.length ? 'Partial planned care' : 'Full planned care'
@@ -344,6 +382,8 @@ export function registerCarerApp(Alpine) {
       // Medication tasks are recorded on the eMAR (MAR status codes), not a separate
       // task-outcome sheet. Route to the medicine list when the task has linked meds.
       if (t0 && t0.isMed && this.medsForTask(t0).length) { this.openMedFromTask(); return }
+      // Observation tasks (mood, fluid, skin, food) are recorded as observations.
+      if (t0 && t0.isObs) { this.openObsFromTask(t0); return }
       this.activeId = id; this.errors = []
       const t = this.activeTask; const rec = t.record
       this.form = rec ? { ...rec.evidence } : this.defaultForm(t.fields)
@@ -1097,8 +1137,9 @@ export function renderCarerVisit({ visit }) {
                 <button @click="openTask(t.id)" class="w-full text-left p-4 flex items-center gap-3 active:bg-ink-50">
                   <span class="w-6 h-6 rounded-md grid place-items-center shrink-0" :class="statusOf(t)==='completed' ? 'bg-success-500 text-white' : statusOf(t)==='pending' ? 'ring-1 ring-ink-300' : (statusOf(t)==='partial' ? 'bg-warning-500 text-white' : 'bg-danger-500 text-white')"><span x-show="statusOf(t)!=='pending'" x-html="window.__icon(statusOf(t))"></span></span>
                   <span x-html="window.__catIcon(t.categoryId)"></span>
-                  <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink-900" :class="statusOf(t)==='completed' && 'line-through text-ink-400'" x-text="t.title"></span><span class="block text-xs"><span x-show="t.isMed" :class="statusColor(statusOf(t))" class="font-medium" x-text="medTaskLabel(t)"></span><span x-show="!t.isMed && t.record" :class="statusColor(statusOf(t))" class="font-medium" x-text="t.record ? t.record.outcomeLabel : ''"></span><span x-show="!t.isMed && !t.record" class="text-ink-500" x-text="t.typeLabel"></span></span></span>
+                  <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink-900" :class="statusOf(t)==='completed' && 'line-through text-ink-400'" x-text="t.title"></span><span class="block text-xs"><span x-show="t.isMed" :class="statusColor(statusOf(t))" class="font-medium" x-text="medTaskLabel(t)"></span><span x-show="t.isObs" :class="statusColor(statusOf(t))" class="font-medium" x-text="obsTaskLabel(t)"></span><span x-show="!t.isMed && !t.isObs && t.record" :class="statusColor(statusOf(t))" class="font-medium" x-text="t.record ? t.record.outcomeLabel : ''"></span><span x-show="!t.isMed && !t.isObs && !t.record" class="text-ink-500" x-text="t.typeLabel"></span></span></span>
                   <span x-show="t.isMed" class="badge bg-danger-50 text-danger-700 ring-danger-100">eMAR</span>
+                  <span x-show="t.isObs" class="badge bg-teal-50 text-teal-700 ring-teal-100">Obs</span>
                   <span x-show="t.twoPerson" class="badge" :class="coCarerPresent ? 'bg-success-50 text-success-700 ring-success-100' : 'bg-warning-50 text-warning-700 ring-warning-100'">${icon('users', 'w-3 h-3')}2</span>
                   <span class="text-ink-300">${icon('chevron-right', 'w-4 h-4')}</span>
                 </button>
@@ -1113,7 +1154,8 @@ export function renderCarerVisit({ visit }) {
                 <button @click="openTask(t.id)" class="w-full text-left p-4 flex items-center gap-3 active:bg-ink-50">
                   <span class="w-6 h-6 rounded-md grid place-items-center shrink-0" :class="statusOf(t)==='completed' ? 'bg-success-500 text-white' : statusOf(t)==='pending' ? 'ring-1 ring-ink-300' : 'bg-danger-500 text-white'"><span x-show="statusOf(t)!=='pending'" x-html="window.__icon(statusOf(t))"></span></span>
                   <span x-html="window.__catIcon(t.categoryId)"></span>
-                  <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink-900" :class="statusOf(t)==='completed' && 'line-through text-ink-400'" x-text="t.title"></span><span class="block text-xs text-ink-500" x-text="t.record ? t.record.outcomeLabel : t.typeLabel"></span></span>
+                  <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink-900" :class="statusOf(t)==='completed' && 'line-through text-ink-400'" x-text="t.title"></span><span class="block text-xs" :class="(t.isObs && obsTaskDone(t)) ? statusColor(statusOf(t)) + ' font-medium' : 'text-ink-500'" x-text="t.isObs ? obsTaskLabel(t) : (t.record ? t.record.outcomeLabel : t.typeLabel)"></span></span>
+                  <span x-show="t.isObs" class="badge bg-teal-50 text-teal-700 ring-teal-100">Obs</span>
                   <span class="text-ink-300">${icon('chevron-right', 'w-4 h-4')}</span>
                 </button>
               </template>

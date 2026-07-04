@@ -24,12 +24,14 @@ export const SERVICE_USER_TASKS = {
     {
       id: 'sut-3', sourceTemplateId: 'hyd-offer-drink', version: 'v3.0', title: 'Offer drink & record fluid amount',
       categoryId: 'hydration', type: 'measurement', priority: 'essential', visit: 'Morning', frequency: 'Each visit', week: ALL,
+      obsId: 'fluid',
       instructions: 'Mary prefers tea with milk in the morning, orange squash at lunch. Target: 1500ml/day, 250ml by lunch.',
       todayStatus: 'completed', lastOutcome: '180ml — tea', target: 1500, startDate: '2025-11-03', reviewDate: '2026-07-20',
     },
     {
       id: 'sut-4', sourceTemplateId: 'skn-pressure-areas', version: 'v1.0', title: 'Check pressure areas',
       categoryId: 'skin', type: 'bodymap', priority: 'essential', visit: 'Morning', frequency: 'Daily', week: ALL,
+      obsId: 'skin',
       instructions: 'Check sacrum and heels. Mary has had redness on left heel previously — note any changes.',
       todayStatus: 'flagged', lastOutcome: 'Redness — left heel', startDate: '2025-12-01', reviewDate: '2026-07-01',
     },
@@ -42,20 +44,23 @@ export const SERVICE_USER_TASKS = {
     {
       id: 'sut-6', sourceTemplateId: 'nut-lunch', version: 'v1.0', title: 'Prepare lunch & record food intake',
       categoryId: 'nutrition', type: 'food', priority: 'important', visit: 'Lunch', frequency: 'Daily', week: ALL,
+      obsId: 'food',
       instructions: 'Soft diet. Mary enjoys cottage pie and fish. Record amount eaten; flag if less than half.',
       todayStatus: 'pending', lastOutcome: 'Most', startDate: '2025-11-03', reviewDate: '2026-08-01',
     },
     {
       id: 'sut-7', sourceTemplateId: 'hyd-offer-drink', version: 'v3.0', title: 'Offer drink & record fluid amount',
       categoryId: 'hydration', type: 'measurement', priority: 'essential', visit: 'Lunch', frequency: 'Each visit', week: ALL,
+      obsId: 'fluid',
       instructions: 'Orange squash preferred at lunch. Check running total toward 1500ml target.',
       todayStatus: 'pending', lastOutcome: '—', target: 1500, startDate: '2025-11-03', reviewDate: '2026-07-20',
     },
     {
       id: 'sut-8', sourceTemplateId: 'obs-mood', version: 'v1.0', title: 'Mood & wellbeing check',
       categoryId: 'wellbeing', type: 'observation', priority: 'recommended', visit: 'Tea', frequency: 'Daily', week: ALL,
-      instructions: 'Mary can become low in the afternoon. Note mood (1–5) and any anxiety.',
-      todayStatus: 'pending', lastOutcome: '2/5 — low', startDate: '2026-02-10', reviewDate: '2026-07-10',
+      obsId: 'mood',
+      instructions: 'Mary can become low in the afternoon. Note her overall mood and any anxiety or distress.',
+      todayStatus: 'pending', lastOutcome: 'Low / tearful', startDate: '2026-02-10', reviewDate: '2026-07-10',
     },
     {
       id: 'sut-9', sourceTemplateId: 'dem-evening-reassure', version: 'v1.0', title: 'Evening reassurance routine',
