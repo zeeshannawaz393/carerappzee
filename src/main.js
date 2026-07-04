@@ -33,10 +33,11 @@ import { renderDeathWorkflow, renderAbsence, renderFeedback } from './carer/work
 import { renderHelp, renderSearch } from './carer/help.js'
 import { renderBreakGlass, renderShare } from './carer/access.js'
 import { renderEquipment } from './carer/equipment.js'
+import { renderSupplies } from './carer/supplies.js'
 import { renderReablement } from './carer/reablement.js'
 import { renderNightShift } from './carer/night.js'
 import { renderTranslate } from './carer/translate.js'
-import { PARAMS, COURSE_TO_RECORD, renewalExpiry } from './data/carer.js'
+import { PARAMS, COURSE_TO_RECORD, renewalExpiry, SUPPLY_CATALOGUE } from './data/carer.js'
 import { renderMe } from './carer/me.js'
 import { renderTimesheet, renderAvailability, renderTraining, renderSettings, renderSafety } from './carer/meScreens.js'
 import { renderLearning } from './carer/learning.js'
@@ -121,6 +122,15 @@ window.__reposition = (suId, pos, skin) => {
   toast(`Repositioning logged — ${pos}`, skin && skin !== 'Intact' ? 'warning' : 'success')
   handleRoute()
 }
+window.__orderSupplies = (suId, qty) => {
+  const items = SUPPLY_CATALOGUE.filter((i) => qty[i.id] > 0).map((i) => ({ id: i.id, name: i.name, qty: qty[i.id], price: i.price }))
+  if (!items.length) return
+  const total = items.reduce((s, it) => s + it.qty * it.price, 0)
+  const order = carerStore.addSupplyOrder({ suId, items, count: items.reduce((a, b) => a + b.qty, 0), total })
+  carerStore.addInbound({ from: 'Supplies', kind: 'supply', text: `Supply request ${order.ref} sent to the office (£${total.toFixed(2)}) — added to the client's invoice on delivery.` })
+  handleRoute()
+  toast(`Requested ${order.count} item${order.count > 1 ? 's' : ''} · £${total.toFixed(2)} — office notified`, 'success')
+}
 window.__doJob = (jobId, evidence) => {
   carerStore.completeJob(jobId, { evidence: !!evidence })
   toast(evidence ? 'Job completed with evidence' : 'Job marked done', 'success')
@@ -201,6 +211,7 @@ route('/carer/clients/:id/history', guard(renderHistory))
 route('/carer/clients/:id/documents', guard(renderDocuments))
 route('/carer/clients/:id/mca', guard(renderCapacity))
 route('/carer/clients/:id/equipment', guard(renderEquipment))
+route('/carer/clients/:id/supplies', guard(renderSupplies))
 route('/carer/clients/:id/reablement', guard(renderReablement))
 route('/carer/clients/:id/orders', guard(renderMedOrders))
 route('/carer/clients/:id/reconcile', guard(renderReconcile))

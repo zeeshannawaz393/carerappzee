@@ -1344,6 +1344,30 @@ export const CONSUMABLES = {
 export const equipmentFor = (id) => EQUIPMENT[id] || []
 export const consumablesFor = (id) => CONSUMABLES[id] || []
 
+/** §20 — orderable supplies catalogue (PPE + consumables). Prices are the unit
+ *  cost the office adds to the client's invoice. `cat` groups them; `icon`/`tint`
+ *  give each a semantic chip. */
+export const SUPPLY_CATALOGUE = [
+  { id: 'glv-s', name: 'Nitrile gloves — Small', cat: 'PPE', unit: 'box of 100', price: 4.5, icon: 'shield', tint: 'bg-violet-50 text-violet-600' },
+  { id: 'glv-m', name: 'Nitrile gloves — Medium', cat: 'PPE', unit: 'box of 100', price: 4.5, icon: 'shield', tint: 'bg-violet-50 text-violet-600' },
+  { id: 'glv-l', name: 'Nitrile gloves — Large', cat: 'PPE', unit: 'box of 100', price: 4.5, icon: 'shield', tint: 'bg-violet-50 text-violet-600' },
+  { id: 'apron', name: 'Disposable aprons', cat: 'PPE', unit: 'roll of 200', price: 3.2, icon: 'shield', tint: 'bg-violet-50 text-violet-600' },
+  { id: 'mask', name: 'Type IIR face masks', cat: 'PPE', unit: 'box of 50', price: 5.0, icon: 'shield', tint: 'bg-violet-50 text-violet-600' },
+  { id: 'gel', name: 'Hand sanitiser 500ml', cat: 'PPE', unit: 'bottle', price: 2.8, icon: 'droplet', tint: 'bg-sky-50 text-sky-600' },
+  { id: 'pad-day', name: 'Continence pads — day', cat: 'Continence', unit: 'pack of 28', price: 6.5, icon: 'droplet', tint: 'bg-blue-50 text-blue-600' },
+  { id: 'pad-night', name: 'Continence pads — night', cat: 'Continence', unit: 'pack of 21', price: 7.8, icon: 'droplet', tint: 'bg-blue-50 text-blue-600' },
+  { id: 'bed-pad', name: 'Disposable bed pads', cat: 'Continence', unit: 'pack of 30', price: 5.9, icon: 'droplet', tint: 'bg-blue-50 text-blue-600' },
+  { id: 'cath-bag', name: 'Catheter leg bags', cat: 'Continence', unit: 'pack of 10', price: 8.4, icon: 'droplet', tint: 'bg-blue-50 text-blue-600' },
+  { id: 'wipes', name: 'Wet wipes', cat: 'Hygiene', unit: 'pack of 80', price: 1.2, icon: 'bath', tint: 'bg-teal-50 text-teal-600' },
+  { id: 'couch', name: 'Couch roll', cat: 'Hygiene', unit: 'roll', price: 2.5, icon: 'bath', tint: 'bg-teal-50 text-teal-600' },
+  { id: 'waste', name: 'Clinical waste bags', cat: 'Hygiene', unit: 'roll of 25', price: 2.1, icon: 'trash', tint: 'bg-ink-100 text-ink-600' },
+  { id: 'barrier', name: 'Barrier cream 100g', cat: 'Skin', unit: 'tube', price: 3.4, icon: 'person-standing', tint: 'bg-pink-50 text-pink-600' },
+  { id: 'emollient', name: 'Emollient wash 500ml', cat: 'Skin', unit: 'bottle', price: 4.2, icon: 'person-standing', tint: 'bg-pink-50 text-pink-600' },
+  { id: 'dressing', name: 'Adhesive dressings', cat: 'Clinical', unit: 'pack of 20', price: 4.0, icon: 'cross', tint: 'bg-rose-50 text-rose-600' },
+  { id: 'gauze', name: 'Sterile gauze swabs', cat: 'Clinical', unit: 'pack of 25', price: 3.1, icon: 'cross', tint: 'bg-rose-50 text-rose-600' },
+]
+export const SUPPLY_CATEGORIES = ['PPE', 'Continence', 'Hygiene', 'Skin', 'Clinical']
+
 /** §16a — reablement outcome goals (time-limited). */
 export const REABLEMENT_GOALS = {
   'su-mary': {

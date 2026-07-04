@@ -5,7 +5,7 @@
  */
 const KEY = 'caretask.carer.v3'
 
-const empty = () => ({ seq: 1, clock: {}, tasks: {}, meds: [], observations: [], incidents: [], messages: [], notes: {}, inbound: [], protocols: [], acks: {}, alertLc: {}, drafts: {}, queued: 0, jobs: {}, changeRequests: [], recon: {}, reposition: [], cash: {}, learning: {}, trainRenew: {}, courseProg: {}, wounds: {} })
+const empty = () => ({ seq: 1, clock: {}, tasks: {}, meds: [], observations: [], incidents: [], messages: [], notes: {}, inbound: [], protocols: [], acks: {}, alertLc: {}, drafts: {}, queued: 0, jobs: {}, changeRequests: [], recon: {}, reposition: [], cash: {}, learning: {}, trainRenew: {}, courseProg: {}, wounds: {}, supplyOrders: [] })
 
 function load() {
   try {
@@ -185,6 +185,10 @@ export const carerStore = {
   /* ---- wound-healing tracker (§19 / E9) — serial measurements per wound ---- */
   addWoundMeasurement(woundId, m) { (s.wounds[woundId] = s.wounds[woundId] || []).push({ ...m, at: now() }); bump(); save(); return s.wounds[woundId] },
   woundMeasurements(woundId) { return s.wounds[woundId] || [] },
+
+  /* ---- supply orders (§20) — PPE/consumables the carer requests; office bills the client ---- */
+  addSupplyOrder(o) { const row = { id: id('sup'), ref: `SUP-${4000 + s.supplyOrders.length + 1}`, at: now(), status: 'Requested', ...o }; s.supplyOrders.unshift(row); bump(); save(); return row },
+  supplyOrders(suId) { return s.supplyOrders.filter((o) => o.suId === suId) },
 
   /* ---- client-money cash count (§26 / E9) ---- */
   setCash(suId, rec) { s.cash[suId] = { ...(s.cash[suId] || {}), ...rec, at: now() }; save(); return s.cash[suId] },

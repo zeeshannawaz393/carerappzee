@@ -38,7 +38,7 @@ export function renderEquipment({ id }) {
     <div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">${esc(c.name)}</p></div>
     <div class="flex flex-col items-end gap-1.5">
       <span class="badge ${s.cls}">${s.label}</span>
-      ${c.status === 'low' || c.status === 'out' ? `<button onclick="window.__notify('Restock requested from office','success')" class="btn btn-secondary btn-sm">${icon('refresh', 'w-3.5 h-3.5')}Request restock</button>` : ''}
+      ${c.status === 'low' || c.status === 'out' ? `<a href="#/carer/clients/${id}/supplies" class="btn btn-secondary btn-sm">${icon('refresh', 'w-3.5 h-3.5')}Request restock</a>` : ''}
     </div>
   </div>` }
 
@@ -46,6 +46,8 @@ export function renderEquipment({ id }) {
     ${flowHeader({ title: 'Equipment & consumables', subtitle: esc(su.name), back: `#/carer/clients/${id}` })}
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <div class="rounded-xl bg-warning-50 ring-1 ring-warning-100 p-3 text-[13px] text-warning-800 flex items-center gap-2">${icon('alert', 'w-4 h-4')}Check all equipment before use. LOLER-registered items (hoists & slings) must be in-date for their 6-monthly inspection.</div>
+
+      <a href="#/carer/clients/${id}/supplies" class="card p-3.5 flex items-center gap-3 active:bg-ink-50"><span class="w-9 h-9 rounded-xl bg-primary-50 text-primary-600 grid place-items-center shrink-0">${icon('packs', 'w-4.5 h-4.5')}</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-ink-900">Order supplies</p><p class="text-xs text-ink-500">Gloves, PPE &amp; consumables — billed to the client</p></div>${icon('chevron-right', 'w-4 h-4 text-ink-300')}</a>
 
       <div>
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Equipment</p>
