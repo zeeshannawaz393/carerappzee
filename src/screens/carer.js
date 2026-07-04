@@ -1389,7 +1389,7 @@ export function renderCarerVisit({ visit }) {
         <div x-show="sheet==='med'" x-cloak class="absolute inset-0 z-20 bg-black/40 flex items-end" @click.self="sheet=null; errors=[]">
           <template x-if="activeMed">
             <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
-              ${recordSheetHeader('activeMed.name', 'activeMed.dose + " · " + activeMed.route')}
+              ${recordSheetHeader('activeMed.name', "(activeMed.due ? 'Due ' + activeMed.due : activeMed.route)")}
               <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
                 <div class="space-y-2">
                   <template x-if="allergyState.warn"><div class="rounded-xl bg-warning-500 text-white p-3"><p class="text-[13px] font-semibold flex items-center gap-2">${icon('alert', 'w-4 h-4')}<span x-text="allergyState.label"></span></p><p class="text-[13px] mt-0.5">Allergy status is not confirmed. Acknowledge before administering; office confirmation may be required.</p></div></template>
@@ -1402,7 +1402,6 @@ export function renderCarerVisit({ visit }) {
                     <span class="text-xl font-bold text-ink-900" x-text="activeMed.dose"></span>
                     <span class="text-[13px] text-ink-500 text-right shrink-0" x-text="activeMed.route + ' · ' + activeMed.form"></span>
                   </div>
-                  <p class="text-[13px] text-ink-500 mt-1">Due <span class="font-medium text-ink-700" x-text="activeMed.due"></span></p>
                   <template x-if="activeMed.instr"><p class="text-[13px] text-ink-600 mt-2 leading-relaxed" x-text="activeMed.instr"></p></template>
                   <div class="flex flex-wrap gap-1.5 mt-2.5" x-show="activeMed.controlled || activeMed.covert || activeMed.timeCritical" x-cloak><template x-if="activeMed.controlled"><span class="badge bg-warning-50 text-warning-700 ring-warning-100">Controlled drug</span></template><template x-if="activeMed.covert"><span class="badge bg-ink-100 text-ink-600 ring-ink-200">Covert (MCA)</span></template><template x-if="activeMed.timeCritical"><span class="badge bg-danger-50 text-danger-700 ring-danger-100">Time-critical</span></template></div>
                 </div>
@@ -1540,7 +1539,7 @@ export function renderCarerVisit({ visit }) {
           <template x-if="activeObs">
             <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
               ${recordSheetHeader('activeObs.name', 'activeObs.group')}
-              <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body"><div class="card p-4"><p class="text-[15px] font-semibold text-ink-900" x-text="activeObs.name"></p><p class="text-[13px] text-ink-500 mt-0.5" x-text="activeObs.group"></p></div>${errorBox}${fieldControls('activeObs.fields')}</div>
+              <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">${errorBox}${fieldControls('activeObs.fields')}</div>
               <div class="p-4 border-t border-ink-200 bg-surface shrink-0"><button @click="saveObs()" class="btn btn-primary btn-lg w-full">${icon('check', 'w-5 h-5')}Save observation</button></div>
             </div>
           </template>
