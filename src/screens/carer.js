@@ -686,7 +686,6 @@ export function registerCarerApp(Alpine) {
       return rows.sort((a, b) => a.time.localeCompare(b.time))
     },
     get repositions() { return this.observations.filter((o) => o.typeId === 'reposition').map((o) => ({ time: o.at, position: o.values.position })) },
-    get obsTrend() { return this.observations.slice(0, 8) },
 
     /* ---------- daily-log timeline ---------- */
     get timeline() {
@@ -1341,11 +1340,8 @@ export function renderCarerVisit({ visit }) {
                 <p class="text-sm font-semibold text-ink-900 flex items-center gap-1.5 mb-2">${icon('footprints', 'w-4 h-4 text-primary-500')}Repositioning</p>
                 <div class="space-y-1.5"><template x-for="r in repositions" :key="r.time"><div class="flex items-center justify-between text-sm"><span class="text-ink-600" x-text="r.time"></span><span class="font-medium text-ink-800" x-text="r.position"></span></div></template><p x-show="!repositions.length" class="text-sm text-ink-500">No repositioning logged yet.</p></div>
               </div>
-              <div class="card p-4">
-                <p class="text-sm font-semibold text-ink-900 flex items-center gap-1.5 mb-2">${icon('activity', 'w-4 h-4 text-teal-500')}Recent observations</p>
-                <div class="space-y-2"><template x-for="o in obsTrend" :key="o.id"><div class="flex items-center gap-2"><span class="w-7 h-7 rounded-lg grid place-items-center shrink-0" :class="o.flag==='abnormal'?'bg-danger-50 text-danger-600':'bg-success-50 text-success-600'" x-html="window.__obsIcon(o.icon)"></span><div class="flex-1 min-w-0"><p class="text-sm font-medium text-ink-800 truncate" x-text="o.typeName"></p><p class="text-xs text-ink-500 truncate" x-text="obsSummary(o)"></p></div><span class="badge" :class="o.flag==='abnormal'?'bg-danger-50 text-danger-700 ring-danger-100':'bg-success-50 text-success-700 ring-success-100'" x-text="o.flag==='abnormal'?'Abnormal':'Normal'"></span></div></template><p x-show="!obsTrend.length" class="text-sm text-ink-500">No observations yet.</p></div>
-              </div>
             </div>
+            <p class="text-xs text-ink-400 mt-2 flex items-center gap-1.5">${icon('info', 'w-3.5 h-3.5')}Full observation readings are on the <button @click="tab='obs'" class="font-semibold text-primary-600 underline">Obs</button> tab.</p>
           </div>
 
           <!-- visit note / handover (write) -->
