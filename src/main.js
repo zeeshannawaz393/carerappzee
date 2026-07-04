@@ -70,7 +70,7 @@ window.__openAlert = openAlertDrawer
 const CARER_STATUS_ICON = { completed: 'check-circle', refused: 'refuse', unable: 'warning', partial: 'info', flagged: 'flag', pending: 'clock' }
 window.__icon = (s) => icon(CARER_STATUS_ICON[s] || 'clock', 'w-3.5 h-3.5')
 window.__catIcon = (cid) => catIcon(cid, 'w-4 h-4', 'w-8 h-8')
-window.__obsIcon = (name) => icon(name || 'activity', 'w-4 h-4')
+window.__obsIcon = (name, cls = 'w-5 h-5') => icon(name || 'activity', cls)
 window.__bodySnap = (view, x, y) => bodySnap(view, x, y)
 window.__carerSync = () => { carerStore.sync(); handleRoute() }
 window.__carerReset = () => { carerStore.reset(); handleRoute(); toast('Carer demo data reset', 'info') }

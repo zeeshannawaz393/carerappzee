@@ -498,6 +498,24 @@ export function registerCarerApp(Alpine) {
       return (t?.fields || []).filter((f) => f.key !== 'note' && o.values[f.key] !== '' && o.values[f.key] != null)
         .map((f) => `${f.type === 'bodymap' ? (o.values[f.key] || []).map((m) => (m && (m.part || m.view)) || '').filter(Boolean).join(', ') : o.values[f.key]}${f.unit ? ' ' + f.unit : ''}`).filter(Boolean).slice(0, 3).join(' · ')
     },
+    /** Per-observation colour (tinted chip + coloured icon) so carers can spot a
+     *  reading by hue as well as by glyph. Full literal class strings so Tailwind
+     *  detects them; keyed by observation id. */
+    obsTint(id) {
+      const T = {
+        temperature: 'bg-red-50 text-red-600', pulse: 'bg-rose-50 text-rose-600',
+        respirations: 'bg-sky-50 text-sky-600', bp: 'bg-violet-50 text-violet-600',
+        spo2: 'bg-cyan-50 text-cyan-600', glucose: 'bg-amber-50 text-amber-600',
+        news2: 'bg-indigo-50 text-indigo-600', pain: 'bg-orange-50 text-orange-600',
+        mood: 'bg-yellow-50 text-yellow-700', sleep: 'bg-indigo-50 text-indigo-600',
+        behaviour: 'bg-purple-50 text-purple-600', seizure: 'bg-amber-50 text-amber-600',
+        fluid: 'bg-blue-50 text-blue-600', food: 'bg-orange-50 text-orange-600',
+        bowel: 'bg-amber-50 text-amber-700', output: 'bg-yellow-50 text-yellow-700',
+        reposition: 'bg-emerald-50 text-emerald-600', skin: 'bg-pink-50 text-pink-600',
+        weight: 'bg-teal-50 text-teal-600',
+      }
+      return T[id] || 'bg-ink-50 text-ink-500'
+    },
     /** The normal range for the breached numeric field of an observation type. */
     normalRange(o) {
       const t = observationType(o.typeId); if (!t) return ''
@@ -1049,7 +1067,7 @@ export function renderCarerVisit({ visit }) {
                 <p class="section-title mb-2">Suggested for this client</p>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="ot in recommendedObs" :key="ot.id">
-                    <button @click="openObs(ot)" class="inline-flex items-center gap-1.5 rounded-full bg-primary-50 text-primary-700 px-3 py-2 text-[13px] font-medium active:bg-primary-100"><span x-html="window.__obsIcon(ot.icon)"></span><span x-text="ot.name"></span></button>
+                    <button @click="openObs(ot)" :class="obsTint(ot.id)" class="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-medium active:brightness-95"><span x-html="window.__obsIcon(ot.icon, 'w-4 h-4')"></span><span x-text="ot.name"></span></button>
                   </template>
                 </div>
               </div>
@@ -1059,7 +1077,7 @@ export function renderCarerVisit({ visit }) {
             <div class="grid grid-cols-2 gap-2.5">
               <template x-for="ot in vitalObs" :key="ot.id">
                 <button @click="openObs(ot)" class="rounded-2xl bg-white ring-1 ring-ink-100 p-3.5 min-h-[60px] flex items-center gap-3 text-left active:bg-ink-50">
-                  <span class="w-9 h-9 rounded-lg bg-ink-50 text-ink-500 grid place-items-center shrink-0" x-html="window.__obsIcon(ot.icon)"></span>
+                  <span :class="obsTint(ot.id)" class="w-9 h-9 rounded-lg grid place-items-center shrink-0" x-html="window.__obsIcon(ot.icon)"></span>
                   <span class="text-[13px] font-medium text-ink-700 leading-tight" x-text="ot.name"></span>
                 </button>
               </template>
@@ -1078,7 +1096,7 @@ export function renderCarerVisit({ visit }) {
                       <div class="grid grid-cols-3 gap-2">
                         <template x-for="ot in grp.items" :key="ot.id">
                           <button @click="openObs(ot)" class="rounded-2xl bg-white ring-1 ring-ink-100 p-2.5 min-h-[64px] flex flex-col items-center justify-center gap-1.5 text-center active:bg-ink-50">
-                            <span class="w-8 h-8 rounded-lg bg-ink-50 text-ink-500 grid place-items-center" x-html="window.__obsIcon(ot.icon)"></span>
+                            <span :class="obsTint(ot.id)" class="w-8 h-8 rounded-lg grid place-items-center" x-html="window.__obsIcon(ot.icon)"></span>
                             <span class="text-[11px] font-medium text-ink-600 leading-tight" x-text="ot.name"></span>
                           </button>
                         </template>
@@ -1103,7 +1121,7 @@ export function renderCarerVisit({ visit }) {
             <div class="rounded-2xl bg-white ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden">
               <template x-for="o in sortedObs" :key="o.id">
                 <div class="p-3.5 flex items-center gap-3" :class="o.flag==='abnormal' && 'bg-danger-50/50'">
-                  <span class="w-9 h-9 rounded-lg grid place-items-center shrink-0" :class="o.flag==='abnormal' ? 'bg-danger-100 text-danger-700' : 'bg-ink-100 text-ink-500'" x-html="window.__obsIcon(o.icon)"></span>
+                  <span class="w-9 h-9 rounded-lg grid place-items-center shrink-0" :class="o.flag==='abnormal' ? 'bg-danger-100 text-danger-700' : obsTint(o.typeId)" x-html="window.__obsIcon(o.icon)"></span>
                   <div class="min-w-0 flex-1">
                     <p class="text-[13px] font-medium text-ink-600" x-text="o.typeName"></p>
                     <p class="text-[15px] font-bold leading-tight" :class="o.flag==='abnormal' ? 'text-danger-700' : 'text-ink-900'" x-text="obsSummary(o)"></p>
