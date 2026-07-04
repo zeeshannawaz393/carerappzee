@@ -922,6 +922,11 @@ export const OBSERVATION_TYPES = [
       { key: 'checks', label: 'Observations completed', type: 'checklist', options: ['NEWS2 / vital signs', 'Neuro / pupils', 'Pain assessment', 'Skin check'] },
       { key: 'escalated', label: 'Escalated to', type: 'select', required: true, options: ['Not yet', 'Office / manager', 'GP', 'NHS 111', '999 / ambulance'] },
       { key: 'note', label: 'How the fall happened & action taken', type: 'textarea' }] },
+  { id: 'oral', name: 'Oral / mouth care', icon: 'smile', group: 'Other',
+    fields: [
+      { key: 'care', label: 'Care given', type: 'checklist', options: ['Teeth brushed', 'Dentures cleaned', 'Mouth rinse', 'Lips moisturised', 'Mouth checked'] },
+      { key: 'condition', label: 'Mouth condition', type: 'select', required: true, options: ['Healthy', 'Dry', 'Coated / debris', 'Sore / red', 'Ulcer', 'Signs of thrush', 'Bleeding gums'], abnormalValues: ['Sore / red', 'Ulcer', 'Signs of thrush', 'Bleeding gums'] },
+      { key: 'note', label: 'Note', type: 'textarea' }] },
   { id: 'pain', name: 'Pain score', icon: 'frown', group: 'Wellbeing',
     fields: [{ key: 'value', label: 'Pain (0–10)', type: 'score', min: 0, max: 10, required: true, escalateAtGte: 7 }, { key: 'site', label: 'Site', type: 'text' }, { key: 'note', label: 'Comment', type: 'textarea' }] },
   { id: 'mood', name: 'Mood & wellbeing', icon: 'smile', group: 'Wellbeing',

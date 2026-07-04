@@ -642,7 +642,7 @@ export function registerCarerApp(Alpine) {
         behaviour: 'bg-purple-50 text-purple-600', seizure: 'bg-amber-50 text-amber-600',
         fluid: 'bg-blue-50 text-blue-600', food: 'bg-orange-50 text-orange-600',
         bowel: 'bg-amber-50 text-amber-700', output: 'bg-yellow-50 text-yellow-700',
-        reposition: 'bg-emerald-50 text-emerald-600', skin: 'bg-pink-50 text-pink-600',
+        reposition: 'bg-emerald-50 text-emerald-600', skin: 'bg-pink-50 text-pink-600', oral: 'bg-teal-50 text-teal-600',
         weight: 'bg-teal-50 text-teal-600',
       }
       return T[id] || 'bg-ink-50 text-ink-500'
@@ -824,11 +824,19 @@ function fieldControls(loopExpr) {
           </button>
         </template>
         <template x-if="f.type==='photo'">
-          <label class="w-full min-h-14 py-2 rounded-lg ring-1 ring-dashed grid place-items-center text-sm cursor-pointer" :class="form[f.key] ? 'ring-success-300 bg-success-50 text-success-700' : 'ring-ink-300 bg-ink-50/50 text-ink-400'">
-            <input type="file" accept="image/*" capture="environment" class="hidden" @change="onPhoto($event, f.key)" />
-            <span x-show="!form[f.key]" class="inline-flex items-center gap-2">${icon('eye', 'w-5 h-5')}Take / add photo</span>
-            <span x-show="form[f.key]" class="inline-flex items-center gap-2"><img :src="photoPreviews[f.key]" x-show="photoPreviews[f.key]" class="w-10 h-10 rounded object-cover" /><span x-text="form[f.key]"></span></span>
-          </label>
+          <div>
+            <!-- consent gate — no clinical photo without recorded consent -->
+            <button type="button" @click="form[f.key+'Consent'] = !form[f.key+'Consent']" :class="form[f.key+'Consent'] ? 'bg-success-50 ring-success-200 text-success-700' : 'bg-ink-50 ring-ink-200 text-ink-700'" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg ring-1 text-left text-[13px] font-medium mb-2">
+              <span class="w-5 h-5 rounded-md grid place-items-center shrink-0" :class="form[f.key+'Consent'] ? 'bg-success-600 text-white' : 'ring-1 ring-ink-300'"><span x-show="form[f.key+'Consent']" x-cloak>${icon('check', 'w-3.5 h-3.5')}</span></span>
+              Person (or representative) consents to this photo
+            </button>
+            <label x-show="form[f.key+'Consent']" x-cloak class="w-full min-h-14 py-2 rounded-lg ring-1 ring-dashed grid place-items-center text-sm cursor-pointer" :class="form[f.key] ? 'ring-success-300 bg-success-50 text-success-700' : 'ring-ink-300 bg-ink-50/50 text-ink-400'">
+              <input type="file" accept="image/*" capture="environment" class="hidden" @change="onPhoto($event, f.key)" />
+              <span x-show="!form[f.key]" class="inline-flex items-center gap-2">${icon('eye', 'w-5 h-5')}Take / add photo</span>
+              <span x-show="form[f.key]" class="inline-flex items-center gap-2"><img :src="photoPreviews[f.key]" x-show="photoPreviews[f.key]" class="w-10 h-10 rounded object-cover" /><span x-text="form[f.key]"></span></span>
+            </label>
+            <p x-show="!form[f.key+'Consent']" x-cloak class="text-xs text-ink-400">Record consent above before taking a photo.</p>
+          </div>
         </template>
         <template x-if="f.type==='bodymap'">${bodyMapControl('form[f.key]', (r) => `toggleBody(f.key, '${r}')`)}</template>
       </div>
