@@ -366,7 +366,6 @@ function buildContinence(h, live) {
 function buildWounds(su) {
   const wounds = woundsFor(su.id)
   if (!wounds.length) return ''
-  const TISSUES = ['Granulation', 'Slough', 'Necrotic', 'Epithelialising', 'Non-blanching redness']
   const cards = wounds.map((wd) => {
     const ms = [...wd.measurements, ...carerStore.woundMeasurements(wd.id)]
     const areas = ms.map((m) => m.length * m.width)
@@ -405,15 +404,7 @@ function buildWounds(su) {
           ${ms.map((m) => `<div class="flex items-center gap-2 px-3 py-2 text-[12px]"><span class="w-14 text-ink-500 font-semibold">${esc(m.date)}</span><span class="flex-1 text-ink-800 tabular-nums">${m.length}&times;${m.width} mm &middot; ${m.length * m.width} mm²</span><span class="text-ink-400">${esc(m.tissue || '')}</span></div>`).join('')}
         </div>
       </details>
-      <div class="mt-3 pt-3 border-t border-ink-100" x-data="{ l: '', w: '', t: '' }">
-        <p class="text-[10px] font-semibold text-ink-400 uppercase tracking-wide mb-2">Add measurement</p>
-        <div class="grid grid-cols-3 gap-2">
-          <div><label class="label">Length</label><input type="number" x-model="l" class="field field-sm" placeholder="mm"></div>
-          <div><label class="label">Width</label><input type="number" x-model="w" class="field field-sm" placeholder="mm"></div>
-          <div><label class="label">Tissue</label><select x-model="t" class="field field-sm"><option value="">&mdash;</option>${TISSUES.map((o) => `<option>${o}</option>`).join('')}</select></div>
-        </div>
-        <button @click="window.__woundMeasure('${wd.id}', l, w, t); l=''; w=''; t=''" class="btn btn-secondary btn-sm w-full mt-2">${icon('plus', 'w-3.5 h-3.5')}Log measurement</button>
-      </div>
+      <p class="text-[11px] text-ink-400 mt-2 flex gap-1.5">${icon('info', 'w-3.5 h-3.5 shrink-0')}<span>New measurements are captured during a visit in the <b>skin observation</b>.</span></p>
       ${trendNote(tone === 'danger' ? 'danger' : 'ink', trend === 'deteriorating'
         ? '<b>Wound is enlarging</b> — review pressure relief / dressing and report to the district nurse.'
         : trend === 'improving' ? 'Healing well — surface area reducing. Keep the current regimen.' : 'Stable — continue monitoring and re-measure each dressing change.')}`)

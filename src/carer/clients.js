@@ -101,7 +101,7 @@ export function renderClientProfile({ id }) {
       ${group('Care & clinical', [
         link('file-check', 'Care plan', `#/carer/clients/${id}/careplan`, 'Goals, preferences, risks & how I like my care'),
         link('pill', 'Medications', `#/carer/clients/${id}/meds`, 'MAR & administration history'),
-        link('footprints', 'Monitoring & repositioning', `#/carer/clients/${id}/monitoring`, 'Schedules & pressure-care chart'),
+        link('rotate-cw', 'Monitoring & repositioning', `#/carer/clients/${id}/monitoring`, 'Schedules & pressure-care chart'),
         link('chart', 'History & trends', `#/carer/clients/${id}/history`, 'Past visits & observation trends'),
       ])}
       ${group('Assessments & legal', [

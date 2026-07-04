@@ -889,6 +889,9 @@ export function medsForVisit(suId, visit) {
  */
 export const OBSERVATION_GROUPS = ['Vital signs', 'Intake & output', 'Wellbeing', 'Skin & mobility', 'Other']
 
+/** Wound-bed tissue types (shared by the skin observation + wound tracker). */
+export const WOUND_TISSUE = ['Granulation', 'Slough', 'Necrotic', 'Epithelialising', 'Non-blanching redness']
+
 export const OBSERVATION_TYPES = [
   { id: 'temperature', name: 'Temperature', icon: 'thermometer', group: 'Vital signs',
     fields: [{ key: 'value', label: 'Temperature', type: 'number', unit: '°C', required: true, min: 30, max: 44, step: 0.1, normalMin: 36.1, normalMax: 37.8 }, { key: 'note', label: 'Comment', type: 'textarea' }] },
@@ -953,7 +956,12 @@ export const OBSERVATION_TYPES = [
   { id: 'reposition', name: 'Repositioning', icon: 'rotate-cw', group: 'Skin & mobility',
     fields: [{ key: 'position', label: 'Repositioned to', type: 'select', required: true, options: ['Back', 'Left side', 'Right side', 'Sat up', 'Chair'] }, { key: 'skin', label: 'Skin on inspection', type: 'select', options: ['Intact', 'Red', 'Broken'], abnormalValues: ['Red', 'Broken'] }] },
   { id: 'skin', name: 'Skin / body map', icon: 'person-standing', group: 'Skin & mobility',
-    fields: [{ key: 'condition', label: 'Skin condition', type: 'select', required: true, options: ['Intact / healthy', 'Redness', 'Broken skin', 'Bruising', 'Swelling'], abnormalValues: ['Redness', 'Broken skin', 'Bruising', 'Swelling'] }, { key: 'bodymap', label: 'Mark area', type: 'bodymap' }, { key: 'note', label: 'Description', type: 'textarea' }, { key: 'photo', label: 'Photo (if consented)', type: 'photo' }] },
+    fields: [{ key: 'condition', label: 'Skin condition', type: 'select', required: true, options: ['Intact / healthy', 'Redness', 'Broken skin', 'Bruising', 'Swelling'], abnormalValues: ['Redness', 'Broken skin', 'Bruising', 'Swelling'] }, { key: 'bodymap', label: 'Mark area', type: 'bodymap' }, { key: 'note', label: 'Description', type: 'textarea' }, { key: 'photo', label: 'Photo (if consented)', type: 'photo' },
+      // Wound-healing capture: link to a tracked wound → feeds its Monitoring timeline.
+      { key: 'woundId', label: 'Update a tracked wound', type: 'woundpick' },
+      { key: 'length', label: 'Wound length', type: 'number', unit: 'mm', min: 0, max: 500, dependsOn: 'woundId' },
+      { key: 'width', label: 'Wound width', type: 'number', unit: 'mm', min: 0, max: 500, dependsOn: 'woundId' },
+      { key: 'tissue', label: 'Wound bed tissue', type: 'select', options: WOUND_TISSUE, dependsOn: 'woundId' }] },
   { id: 'weight', name: 'Weight', icon: 'weight', group: 'Other',
     fields: [{ key: 'value', label: 'Weight', type: 'number', unit: 'kg', required: true, min: 20, max: 200, step: 0.1 }] },
 ]

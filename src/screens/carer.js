@@ -11,7 +11,7 @@ import {
   SUPPORT_ACTIONS, DOSE_OUTCOMES, deriveDose, ALLERGY_STATES, medRule, PARAMS,
   PROTOCOLS, protocol, PROTOCOL_LIST, protocolFor,
   CHECKIN_METHODS, WELFARE_OUTCOMES, geofenceFor, LEAVING_SAFE_ITEMS, LEAVING_SAFE_EXCEPTIONS, VISIT_REASON_CODES,
-  visitTypeFor, VISIT_TYPE_META,
+  visitTypeFor, VISIT_TYPE_META, woundsFor,
   WITNESS_RULE, ELIGIBLE_WITNESSES, WITNESS_FALLBACKS, orderFor, orderBlocked, RECON_STATES, implausible,
   jitCourseForSU,
 } from '../data/carer.js'
@@ -589,6 +589,11 @@ export function registerCarerApp(Alpine) {
       const flag = evaluateObsFlag(this.activeObs, this.form)
       const pid = flag === 'abnormal' ? protocolFor(this.activeObs.id, this.form) : null
       carerStore.addObservation({ visitId: this.visitId, suId: this.rota.suId, typeId: this.activeObs.id, typeName: this.activeObs.name, icon: this.activeObs.icon, values: { ...this.form }, flag, protocolId: pid })
+      // Skin obs linked to a tracked wound → add a point to that wound's healing timeline.
+      if (this.activeObs.id === 'skin' && this.form.woundId && Number(this.form.length) && Number(this.form.width)) {
+        carerStore.addWoundMeasurement(this.form.woundId, { date: 'Today', length: Number(this.form.length), width: Number(this.form.width), tissue: this.form.tissue || '—', note: this.form.note || '', by: 'You', consented: !!this.form.photoConsent })
+        window.__notify('Wound measurement added to the timeline', 'success')
+      }
       this.refresh()
       if (pid) { window.__notify(`Abnormal ${this.activeObs.name} — launching protocol`, 'warning'); this.launchProtocol(pid); return }
       this.sheet = null; this.tab = 'obs'
@@ -626,9 +631,11 @@ export function registerCarerApp(Alpine) {
     },
     obsSummary(o) {
       const t = observationType(o.typeId)
-      return (t?.fields || []).filter((f) => f.key !== 'note' && f.type !== 'boolean' && o.values[f.key] !== '' && o.values[f.key] != null)
+      return (t?.fields || []).filter((f) => f.key !== 'note' && f.type !== 'boolean' && f.type !== 'woundpick' && o.values[f.key] !== '' && o.values[f.key] != null)
         .map((f) => `${f.type === 'bodymap' ? (o.values[f.key] || []).map((m) => (m && (m.part || m.view)) || '').filter(Boolean).join(', ') : o.values[f.key]}${f.unit ? ' ' + f.unit : ''}`).filter(Boolean).slice(0, 3).join(' · ')
     },
+    /** Tracked wounds for the person in this visit — feeds the skin-obs wound picker. */
+    get wounds() { return this.rota ? woundsFor(this.rota.suId) : [] },
     /** Per-observation colour (tinted chip + coloured icon) so carers can spot a
      *  reading by hue as well as by glyph. Full literal class strings so Tailwind
      *  detects them; keyed by observation id. */
@@ -777,8 +784,11 @@ const MOOD_SCALE = {
 function fieldControls(loopExpr) {
   return html`
     <template x-for="f in ${loopExpr}" :key="f.key">
-      <div class="mb-4">
+      <div class="mb-4" x-show="(!f.dependsOn || !!form[f.dependsOn]) && (f.type!=='woundpick' || wounds.length)">
         <label class="label" x-text="f.label + (fieldNeeded(f) ? ' *' : '')"></label>
+        <template x-if="f.type==='woundpick'">
+          <select x-model="form[f.key]" class="field field-md"><option value="">No — general skin check</option><template x-for="wd in wounds" :key="wd.id"><option :value="wd.id" x-text="wd.site + ' · ' + wd.type"></option></template></select>
+        </template>
         <template x-if="f.type==='boolean'">
           <div class="flex gap-2.5">
             <button type="button" @click="setBool(f.key,true)" :class="form[f.key]===true ? 'bg-success-600 text-white' : 'bg-ink-100 text-ink-500'" class="flex-1 h-11 rounded-xl inline-flex items-center justify-center gap-1.5 text-sm font-semibold">${icon('check', 'w-4 h-4')}Yes</button>
