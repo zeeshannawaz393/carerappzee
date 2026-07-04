@@ -1293,7 +1293,7 @@ export function renderCarerVisit({ visit }) {
             <div class="card p-4">
               <div class="relative pl-5">
                 <div class="absolute left-1.5 top-1 bottom-1 w-px bg-ink-200"></div>
-                <template x-for="ev in timeline" :key="ev.time+ev.title">
+                <template x-for="(ev, idx) in timeline" :key="idx">
                   <div class="relative pb-3 last:pb-0">
                     <span class="absolute -left-[13px] top-0.5 w-3 h-3 rounded-full ring-2 ring-white" :class="{'bg-success-500':ev.tone==='success','bg-danger-500':ev.tone==='danger','bg-teal-500':ev.tone==='teal','bg-primary-500':ev.tone==='primary','bg-ink-300':ev.tone==='ink'}"></span>
                     <div class="flex items-start gap-2"><span class="text-xs font-mono text-ink-400 mt-0.5 w-9 shrink-0" x-text="ev.time"></span><div class="min-w-0"><p class="text-sm font-medium text-ink-800" x-text="ev.title"></p><p class="text-xs text-ink-500 truncate" x-text="ev.detail"></p></div></div>
