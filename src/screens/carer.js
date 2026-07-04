@@ -110,6 +110,8 @@ export function registerCarerApp(Alpine) {
     // E2 — check-in / leaving-safe / outcome
     checkinMethod: '', checkinReason: '', checkinGeofence: 'inside', welfare: '',
     leavingSafe: {}, reasonCode: '',
+    // geofence — simulated live distance (m) from the client's address
+    distanceM: 12, geoRadius: 100, inboxDot: false,
     coCarerPresent: false, handoverAcked: false,
     photoPreviews: {},
     voiceRecording: false, voiceUrl: '',
@@ -207,11 +209,18 @@ export function registerCarerApp(Alpine) {
     },
     performCheckin() {
       const e = []
-      if ((this.checkinMethod === 'manual' || this.checkinGeofence === 'outside') && !this.checkinReason) e.push('A reason is required for manual / out-of-geofence check-in.')
+      // Hard geofence gate — cannot clock in from outside 100 m unless the visit
+      // type is exempt (escort/telephone) or the office has authorised an override.
+      if (this.checkinGeofence === 'outside' && !this.geofenceExempt && !this.geoAuthorised) {
+        this.errors = ['You are outside the visit area. You must be within 100 m of the address to clock in — request authorisation from the office to override.']
+        window.__notify('Outside the visit area — clock-in blocked', 'warning'); return
+      }
+      if (this.geoAuthorised && this.checkinGeofence === 'outside' && !this.checkinReason) e.push('A reason is required for an office-authorised out-of-area check-in.')
       if (!this.welfare) e.push('Record the on-entry welfare outcome.')
       this.errors = e
       if (e.length) { window.__notify('Complete check-in', 'warning'); return }
-      this.clock = carerStore.clockIn(this.visitId, { method: this.checkinMethod, geofence: this.checkinGeofence, reason: this.checkinReason, welfare: this.welfare, verified: this.checkinGeofence === 'inside' && this.checkinMethod === 'gps' })
+      // out:null / locked:false clears any prior auto clock-out so an authorised carer can resume.
+      this.clock = carerStore.clockIn(this.visitId, { method: this.checkinMethod, geofence: this.checkinGeofence, reason: this.checkinReason, welfare: this.welfare, verified: this.checkinGeofence === 'inside' && this.checkinMethod === 'gps', out: null, locked: false, autoOut: false })
       this.sheet = null
       window.__notify(this.checkinGeofence === 'inside' ? 'Clocked in · GPS confirmed' : `Clocked in · exception (${this.checkinMethod})`, this.checkinGeofence === 'inside' ? 'success' : 'warning')
       if (this.welfare === 'emergency') { this.personConfirmed = true; this.launchProtocol('unresponsive') }
@@ -254,6 +263,46 @@ export function registerCarerApp(Alpine) {
       this.sheet = null
       window.__notify(`Visit ${dims.display} — clocked out ${this.clock.out}`, dims.display === 'Completed' ? 'success' : 'warning')
     },
+
+    /* ---- geofence (§14 — location boundary) ---------------------------------
+       Escort ("you take the person out") and telephone visits move by design,
+       so they are exempt from the boundary. Everything else is held to a 100 m
+       radius: a carer cannot clock in from outside it, and if they leave it
+       mid-visit the visit is clocked out automatically and locked until the
+       office authorises them to resume. */
+    get suAvatarClass() { const c = this.su.color; return c === 'warning' ? 'bg-warning-100 text-warning-700' : c === 'teal' ? 'bg-teal-100 text-teal-700' : c === 'danger' ? 'bg-danger-100 text-danger-700' : 'bg-primary-100 text-primary-700' },
+    get vType() { return visitTypeFor(this.visitId) },
+    get geofenceExempt() { return ['escort', 'telephone'].includes(this.vType) },
+    get geoOutside() { return this.distanceM > this.geoRadius },
+    get geoAuthorised() { return !!this.clock.authorised },
+    get geoLocked() { return !!this.clock.locked },
+    /* simulated live-location update (real build: GPS watch callback) */
+    onLocation(m) {
+      this.distanceM = m
+      if (this.geofenceExempt) return
+      if (this.clock.in && !this.clock.out && m > this.geoRadius) this.geofenceBreach()
+    },
+    geofenceBreach() {
+      this.clock = carerStore.clockOut(this.visitId, { autoOut: true, locked: true, reasonCode: 'geofence-breach', geoOutM: this.distanceM })
+      carerStore.addInbound({ from: 'System · Geofence', kind: 'geofence', text: `You moved ${this.distanceM} m from ${this.su.name} (100 m limit) before clocking out. The visit was clocked out automatically and the office alerted. You must be authorised by the office before you can clock in again.` })
+      carerStore.addMessage({ visitId: this.visitId, to: 'Office', text: `AUTO — ${this.su.name}: carer left the 100 m geofence (${this.distanceM} m); visit clocked out and locked pending authorisation.` })
+      this.inboxDot = true
+      this.sheet = null
+      window.__notify('You left the visit area — clocked out. Contact the office to resume.', 'error')
+    },
+    requestGeoAuth() {
+      this.clock = carerStore.updateClock(this.visitId, { authRequested: true })
+      carerStore.addMessage({ visitId: this.visitId, to: 'Office', text: `Authorisation requested — ${this.su.name} (outside 100 m geofence / resume after auto clock-out).` })
+      window.__notify('Request sent to the office — awaiting authorisation', 'info')
+    },
+    /* simulated office decision — in a real build this is pushed from the admin console */
+    officeAuthorise() {
+      this.clock = carerStore.updateClock(this.visitId, { authorised: true, locked: false, authRequested: false })
+      carerStore.addInbound({ from: 'Office', kind: 'auth', text: `Authorised — you may now clock in / resume ${this.su.name}. Your location is still recorded for this visit.` })
+      this.inboxDot = true
+      window.__notify('Office authorised — you can clock in now', 'success')
+    },
+    resumeVisit() { this.distanceM = 15; this.openCheckin() },
 
     /* ---------- shared field engine ---------- */
     fieldNeeded(f) { return f.required || (f.requiredIf && this.evalCond(f.requiredIf)) },
@@ -493,7 +542,7 @@ export function registerCarerApp(Alpine) {
     },
     obsSummary(o) {
       const t = observationType(o.typeId)
-      return (t?.fields || []).filter((f) => f.key !== 'note' && o.values[f.key] !== '' && o.values[f.key] != null)
+      return (t?.fields || []).filter((f) => f.key !== 'note' && f.type !== 'boolean' && o.values[f.key] !== '' && o.values[f.key] != null)
         .map((f) => `${f.type === 'bodymap' ? (o.values[f.key] || []).map((m) => (m && (m.part || m.view)) || '').filter(Boolean).join(', ') : o.values[f.key]}${f.unit ? ' ' + f.unit : ''}`).filter(Boolean).slice(0, 3).join(' · ')
     },
     /** Per-observation colour (tinted chip + coloured icon) so carers can spot a
@@ -884,44 +933,72 @@ export function renderCarerVisit({ visit }) {
   const inner = html`
     <div class="flex flex-col h-full" x-data="carerApp('${vid}')" x-init="init()">
 
-      <!-- header (minimal — blends into canvas like today.js; identity + safety only) -->
+      <!-- header — identity, safety flags, and one adaptive status strip (clock + location) -->
       <div class="bg-canvas text-ink-900 px-5 pt-8 pb-3 shrink-0">
-        <div class="flex items-center justify-between">
-          <a href="#/carer" class="inline-flex items-center gap-1 text-sm font-medium text-ink-500 active:text-ink-700">${icon('chevron-left', 'w-4 h-4')}Round</a>
-          <div class="flex items-center gap-4">
-            <button @click="sheet='context'" class="text-sm font-medium text-ink-500 inline-flex items-center gap-1 active:text-ink-700">${icon('info', 'w-4 h-4')}About</button>
-            <button @click="sheet='message'" class="text-sm font-medium text-primary-600 inline-flex items-center gap-1 active:text-primary-700">${icon('bell', 'w-4 h-4')}Office</button>
+        <!-- nav -->
+        <div class="flex items-center justify-between -mx-1">
+          <a href="#/carer" class="inline-flex items-center gap-0.5 rounded-lg px-1.5 py-1 text-sm font-medium text-ink-500 active:bg-ink-100">${icon('chevron-left', 'w-4 h-4')}Round</a>
+          <div class="flex items-center gap-1">
+            <button @click="sheet='context'" class="w-9 h-9 rounded-full grid place-items-center text-ink-500 active:bg-ink-100" title="About this client">${icon('info', 'w-5 h-5')}</button>
+            <button @click="sheet='message'; inboxDot=false" class="relative w-9 h-9 rounded-full grid place-items-center text-primary-600 active:bg-primary-50" title="Office & on-call">${icon('bell', 'w-5 h-5')}<span x-show="inboxDot" x-cloak class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger-500 ring-2 ring-canvas"></span></button>
           </div>
         </div>
-        <div class="flex items-center gap-3 mt-2.5">
-          <span class="w-10 h-10 rounded-full bg-primary-100 text-primary-700 grid place-items-center text-sm font-semibold shrink-0" x-text="su.initials"></span>
-          <div class="min-w-0 flex-1"><h2 class="text-lg font-bold leading-tight truncate" x-text="su.name"></h2><p class="text-xs text-ink-500 truncate">DOB <span x-text="su.dob"></span> · <span x-text="rota.visit"></span> · <span x-text="rota.time"></span>${vType !== 'standard' ? ` · ${esc(vTypeMeta.label)}` : ''}</p></div>
-          <span x-show="personConfirmed" class="inline-flex items-center gap-1 rounded-full bg-success-50 text-success-700 ring-1 ring-success-100 px-2 py-0.5 text-xs font-semibold shrink-0">${icon('check', 'w-3 h-3')}ID</span>
+
+        <!-- identity -->
+        <div class="flex items-start gap-3 mt-2.5">
+          <span class="w-12 h-12 rounded-2xl grid place-items-center text-base font-bold shrink-0" :class="suAvatarClass" x-text="su.initials"></span>
+          <div class="min-w-0 flex-1 pt-0.5">
+            <div class="flex items-center gap-2">
+              <h2 class="text-[19px] font-bold leading-tight truncate" x-text="su.name"></h2>
+              ${vType !== 'standard' ? `<span class="shrink-0 rounded-full bg-info-50 text-info-700 px-2 py-0.5 text-[11px] font-semibold">${esc(vTypeMeta.label)}</span>` : ''}
+            </div>
+            <p class="text-[13px] text-ink-500 truncate mt-0.5">DOB <span x-text="su.dob"></span> · <span x-text="rota.visit"></span> · <span x-text="rota.time"></span></p>
+          </div>
+          <span x-show="personConfirmed" x-cloak class="mt-0.5 inline-flex items-center gap-1 rounded-full bg-success-50 text-success-700 ring-1 ring-success-100 px-2 py-0.5 text-[11px] font-semibold shrink-0">${icon('check', 'w-3 h-3')}ID</span>
         </div>
-        <div x-show="(su.allergies||[]).length || allergyState.warn || ${hasHeaderCare ? 'true' : 'false'}" class="flex flex-wrap items-center gap-1.5 mt-2">
+
+        <!-- safety flags -->
+        <div x-show="(su.allergies||[]).length || allergyState.warn || ${hasHeaderCare ? 'true' : 'false'}" class="flex flex-wrap items-center gap-1.5 mt-2.5">
           <template x-if="(su.allergies||[]).length">
-            <span class="inline-flex items-center gap-1.5 rounded-lg bg-danger-50 text-danger-700 px-2 py-0.5 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}Allergies: <span x-text="su.allergies.join(', ')"></span></span>
+            <span class="inline-flex items-center gap-1.5 rounded-lg bg-danger-50 text-danger-700 px-2 py-1 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}Allergies: <span x-text="su.allergies.join(', ')"></span></span>
           </template>
           <template x-if="allergyState.warn">
-            <span class="inline-flex items-center gap-1.5 rounded-lg bg-warning-50 text-warning-700 px-2 py-0.5 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}<span x-text="allergyState.label"></span></span>
+            <span class="inline-flex items-center gap-1.5 rounded-lg bg-warning-50 text-warning-700 px-2 py-1 text-xs font-semibold">${icon('alert', 'w-3.5 h-3.5')}<span x-text="allergyState.label"></span></span>
           </template>
           ${headerCareChips}
         </div>
+
         <template x-if="rota.twoCarer">
-          <div class="mt-2 flex items-center gap-2 rounded-lg bg-primary-50 ring-1 ring-primary-100 px-2.5 py-1">
+          <div class="mt-2.5 flex items-center gap-2 rounded-lg bg-primary-50 ring-1 ring-primary-100 px-2.5 py-1.5">
             <span class="text-xs font-semibold text-primary-700 inline-flex items-center gap-1.5">${icon('users', 'w-3.5 h-3.5')}Two-carer</span>
             <span class="text-xs font-medium" :class="coCarerPresent ? 'text-success-600' : 'text-warning-600'" x-text="coCarerPresent ? '· present' : '· not in'"></span>
-            <button @click="coCarerPresent=!coCarerPresent; window.__notify(coCarerPresent ? 'Co-carer checked in' : 'Co-carer left','info')" class="ml-auto text-xs font-semibold rounded-full bg-white ring-1 ring-ink-200 px-2 py-0.5 text-ink-700" x-text="coCarerPresent ? 'Mark left' : 'Arrived'"></button>
+            <button @click="coCarerPresent=!coCarerPresent; window.__notify(coCarerPresent ? 'Co-carer checked in' : 'Co-carer left','info')" class="ml-auto text-xs font-semibold rounded-full bg-white ring-1 ring-ink-200 px-2.5 py-0.5 text-ink-700" x-text="coCarerPresent ? 'Mark left' : 'Arrived'"></button>
           </div>
         </template>
-        <div class="mt-3" x-show="clock.in || clock.out" x-cloak>
-          <template x-if="clock.in && !clock.out">
-            <div><div class="flex justify-between text-xs font-medium text-ink-500 mb-1"><span x-text="'In '+clock.in"></span><span x-text="progress.done+'/'+progress.total+' complete'"></span></div><div class="h-1.5 rounded-full bg-ink-100 overflow-hidden"><div class="h-1.5 bg-primary-500 rounded-full transition-all" :style="'width:'+progress.pct+'%'"></div></div></div>
-          </template>
-          <template x-if="clock.out">
-            <div class="rounded-lg bg-success-50 text-success-700 ring-1 ring-success-100 px-3 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5">${icon('check-circle', 'w-4 h-4')}Clocked out <span x-text="clock.out"></span></div>
-          </template>
-        </div>
+
+        <!-- adaptive status strip -->
+        <template x-if="clock.in && !clock.out">
+          <div class="mt-3 rounded-xl px-3 py-2.5 ring-1" :class="(!geofenceExempt && geoOutside) ? 'bg-danger-50 ring-danger-200' : 'bg-white ring-ink-100'">
+            <div class="flex items-center gap-2 text-[13px]">
+              <span class="inline-flex items-center gap-1 font-semibold text-ink-700">${icon('clock', 'w-3.5 h-3.5')}<span x-text="'In '+clock.in"></span></span>
+              <span class="text-ink-300">·</span>
+              <span class="text-ink-500" x-text="progress.done+'/'+progress.total+' done'"></span>
+              <template x-if="!geofenceExempt">
+                <span class="ml-auto inline-flex items-center gap-1 font-semibold" :class="geoOutside ? 'text-danger-600' : 'text-success-600'">${icon('map-pin', 'w-3.5 h-3.5')}<span x-text="geoOutside ? 'Outside area' : 'Within area'"></span></span>
+              </template>
+              <template x-if="geofenceExempt">
+                <span class="ml-auto text-[12px] text-ink-400">Not geofenced</span>
+              </template>
+            </div>
+            <div class="h-1.5 rounded-full bg-ink-100 overflow-hidden mt-2"><div class="h-1.5 bg-primary-500 rounded-full transition-all" :style="'width:'+progress.pct+'%'"></div></div>
+          </div>
+        </template>
+        <template x-if="clock.out && geoLocked">
+          <div class="mt-3 rounded-xl bg-danger-50 ring-1 ring-danger-200 px-3 py-2 text-[13px] font-semibold text-danger-700 inline-flex items-center gap-1.5">${icon('alert', 'w-4 h-4')}Locked — left visit area, awaiting office</div>
+        </template>
+        <template x-if="clock.out && !geoLocked">
+          <div class="mt-3 rounded-xl bg-success-50 ring-1 ring-success-100 px-3 py-2 text-[13px] font-semibold text-success-700 inline-flex items-center gap-1.5">${icon('check-circle', 'w-4 h-4')}Clocked out <span x-text="clock.out"></span></div>
+        </template>
       </div>
 
       <!-- section tabs -->
@@ -941,6 +1018,46 @@ export function renderCarerVisit({ visit }) {
           <template x-if="!clock.in">
             <button @click="openCheckin()" class="btn btn-primary btn-lg w-full">${icon('clock', 'w-4 h-4')}Clock in to start visit</button>
           </template>
+
+          <!-- geofence: auto clocked-out & locked — office authorisation required to resume -->
+          <template x-if="clock.out && geoLocked">
+            <div class="rounded-xl bg-danger-50 ring-1 ring-danger-200 p-4">
+              <p class="text-sm font-bold text-danger-700 flex items-center gap-1.5">${icon('alert', 'w-4 h-4')}Auto clocked-out — you left the visit area</p>
+              <p class="text-xs text-danger-700 mt-1">You moved more than 100 m from <span x-text="su.name"></span>, so the visit was clocked out and the office alerted. You cannot clock in again until the office authorises you — contact them to explain.</p>
+              <div class="mt-3 space-y-2">
+                <template x-if="!clock.authRequested"><button @click="requestGeoAuth()" class="btn btn-danger btn-md w-full">${icon('bell', 'w-4 h-4')}Contact office for authorisation</button></template>
+                <template x-if="clock.authRequested"><div class="flex items-center justify-between rounded-lg bg-white/60 px-3 py-2"><span class="text-xs font-medium text-danger-600">Request sent — waiting for the office…</span><button @click="officeAuthorise()" class="text-[11px] font-medium text-ink-400 underline">Demo: office authorises</button></div></template>
+              </div>
+            </div>
+          </template>
+          <!-- geofence: office has authorised — carer can resume -->
+          <template x-if="clock.out && clock.autoOut && geoAuthorised && !geoLocked">
+            <div class="rounded-xl bg-success-50 ring-1 ring-success-100 p-4">
+              <p class="text-sm font-semibold text-success-700 flex items-center gap-1.5">${icon('check-circle', 'w-4 h-4')}Office authorised — you can resume</p>
+              <button @click="resumeVisit()" class="btn btn-primary btn-md w-full mt-2.5">${icon('clock', 'w-4 h-4')}Resume visit (clock in)</button>
+            </div>
+          </template>
+
+          <!-- geofence: live boundary status while the visit is active (monitored types only) -->
+          <template x-if="clock.in && !clock.out && !geofenceExempt">
+            <div class="rounded-xl p-3.5 ring-1" :class="geoOutside ? 'bg-danger-50 ring-danger-200' : 'bg-success-50 ring-success-100'">
+              <div class="flex items-center gap-2">
+                <span :class="geoOutside ? 'text-danger-600' : 'text-success-600'">${icon('map-pin', 'w-4 h-4')}</span>
+                <p class="text-sm font-semibold" :class="geoOutside ? 'text-danger-700' : 'text-success-700'" x-text="geoOutside ? 'Outside the visit area' : 'Within the visit area'"></p>
+                <span class="ml-auto text-xs font-semibold" :class="geoOutside ? 'text-danger-600' : 'text-success-600'" x-text="distanceM + ' m / ' + geoRadius + ' m'"></span>
+              </div>
+              <p class="text-xs mt-1.5" :class="geoOutside ? 'text-danger-700' : 'text-success-700'">Leaving the 100 m area clocks you out automatically and alerts the office.</p>
+              <div class="flex gap-2 mt-2.5">
+                <button @click="onLocation(15)" class="flex-1 rounded-lg bg-white ring-1 ring-ink-200 px-2 py-1.5 text-xs font-medium text-ink-600 active:bg-ink-50">Simulate: at address</button>
+                <button @click="onLocation(150)" class="flex-1 rounded-lg bg-white ring-1 ring-danger-200 px-2 py-1.5 text-xs font-medium text-danger-600 active:bg-danger-50">Simulate: leave area</button>
+              </div>
+            </div>
+          </template>
+          <!-- geofence: exempt visit types (escort / telephone) -->
+          <template x-if="clock.in && !clock.out && geofenceExempt">
+            <div class="rounded-xl bg-info-50 ring-1 ring-info-100 p-3 flex items-center gap-2">${icon('map-pin', 'w-4 h-4 text-info-600')}<p class="text-xs text-info-800" x-text="vType==='telephone' ? 'Telephone visit — location is not geofenced.' : 'Escort visit — location moves with you and is not geofenced.'"></p></div>
+          </template>
+
           <div class="grid grid-cols-3 gap-2.5">
             <div class="card p-3 text-center"><p class="text-xl font-bold text-ink-900" x-text="tasks.length"></p><p class="text-xs text-ink-500">Tasks</p></div>
             <div class="card p-3 text-center"><p class="text-xl font-bold text-ink-900" x-text="scheduled.length"></p><p class="text-xs text-ink-500">Meds due</p></div>
@@ -1435,16 +1552,41 @@ export function renderCarerVisit({ visit }) {
           <div class="bg-surface rounded-t-2xl w-full min-h-[40%] max-h-[92%] flex flex-col overflow-hidden">
             ${recordSheetHeader("'Check in'", 'su.name')}
             <div class="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 sheet-body">
-              <div class="rounded-xl p-3.5" :class="checkinGeofence==='inside' ? 'bg-success-50 ring-1 ring-success-100' : 'bg-warning-50 ring-1 ring-warning-100'">
-                <p class="text-sm font-semibold flex items-center gap-2" :class="checkinGeofence==='inside' ? 'text-success-700' : 'text-warning-700'">${icon('map-pin', 'w-4 h-4')}<span x-text="checkinGeofence==='inside' ? 'Inside geofence (100m)' : 'Outside geofence — reason required'"></span></p>
-                <p class="text-xs mt-0.5" :class="checkinGeofence==='inside' ? 'text-success-700' : 'text-warning-800'" x-text="su.address"></p>
-              </div>
+              <!-- location gate — inside / exempt / blocked / authorised-override -->
+              <template x-if="checkinGeofence==='inside'">
+                <div class="rounded-xl p-3.5 bg-success-50 ring-1 ring-success-100">
+                  <p class="text-sm font-semibold flex items-center gap-2 text-success-700">${icon('map-pin', 'w-4 h-4')}Inside the visit area (within 100 m)</p>
+                  <p class="text-xs mt-0.5 text-success-700" x-text="su.address"></p>
+                </div>
+              </template>
+              <template x-if="checkinGeofence==='outside' && geofenceExempt">
+                <div class="rounded-xl p-3.5 bg-info-50 ring-1 ring-info-100">
+                  <p class="text-sm font-semibold flex items-center gap-2 text-info-700">${icon('map-pin', 'w-4 h-4')}Location not geofenced for this visit</p>
+                  <p class="text-xs mt-0.5 text-info-800" x-text="vType==='telephone' ? 'Telephone / virtual visit — recorded as remote contact.' : 'Escort visit — you accompany the person, so location will move.'"></p>
+                </div>
+              </template>
+              <template x-if="checkinGeofence==='outside' && !geofenceExempt && !geoAuthorised">
+                <div class="rounded-xl p-3.5 bg-danger-50 ring-1 ring-danger-200">
+                  <p class="text-sm font-semibold flex items-center gap-2 text-danger-700">${icon('alert', 'w-4 h-4')}You are outside the visit area</p>
+                  <p class="text-xs mt-1 text-danger-700">You must be within 100 m of <span x-text="su.address"></span> to clock in. Contact the office to request an authorised override.</p>
+                  <template x-if="!clock.authRequested"><button @click="requestGeoAuth()" class="btn btn-danger btn-md w-full mt-2.5">${icon('bell', 'w-4 h-4')}Request office authorisation</button></template>
+                  <template x-if="clock.authRequested"><div class="mt-2.5 flex items-center justify-between"><span class="text-xs font-medium text-danger-600">Request sent — waiting for the office…</span><button @click="officeAuthorise()" class="text-[11px] font-medium text-ink-400 underline">Demo: authorise</button></div></template>
+                </div>
+              </template>
+              <template x-if="checkinGeofence==='outside' && !geofenceExempt && geoAuthorised">
+                <div class="rounded-xl p-3.5 bg-warning-50 ring-1 ring-warning-100">
+                  <p class="text-sm font-semibold flex items-center gap-2 text-warning-700">${icon('check-circle', 'w-4 h-4')}Office-authorised out-of-area check-in</p>
+                  <p class="text-xs mt-0.5 text-warning-800">Authorised override — record the reason below. Your location is still logged.</p>
+                </div>
+              </template>
               ${errorBox}
               <div><p class="text-[15px] font-semibold text-ink-900 mb-2.5">Check-in method</p><div class="flex flex-wrap gap-2"><template x-for="m in CHECKIN_METHODS" :key="m.id"><button type="button" @click="checkinMethod=m.id" :class="checkinMethod===m.id ? 'bg-primary-600 text-white' : 'bg-ink-100 text-ink-600'" class="rounded-full px-4 py-2.5 text-[13px] font-medium" x-text="m.label"></button></template></div></div>
-              <template x-if="checkinMethod==='manual' || checkinGeofence==='outside'"><div><label class="label">Reason *</label><input x-model="checkinReason" class="field field-md" placeholder="Why manual / out of geofence?" /></div></template>
+              <template x-if="(checkinGeofence==='outside' && geoAuthorised) || checkinMethod==='manual'"><div><label class="label">Reason *</label><input x-model="checkinReason" class="field field-md" placeholder="Reason for manual / authorised out-of-area check-in" /></div></template>
               <div><p class="text-[15px] font-semibold text-ink-900 mb-2.5">On-entry welfare</p><div class="rounded-2xl ring-1 ring-ink-100 divide-y divide-ink-100 overflow-hidden"><template x-for="w in WELFARE_OUTCOMES" :key="w.id"><button type="button" @click="welfare=w.id" :class="welfare===w.id ? 'bg-primary-50' : ''" class="w-full flex items-center gap-3 px-3.5 py-3 text-left"><span class="w-3 h-3 rounded-full shrink-0" :class="w.tone==='ok'?'bg-success-500':w.tone==='warn'?'bg-warning-500':'bg-danger-500'"></span><span class="flex-1 text-sm font-medium text-ink-800" x-text="w.label"></span><span x-show="welfare===w.id" class="text-primary-600">${icon('check', 'w-4 h-4')}</span></button></template></div></div>
             </div>
-            <div class="p-4 border-t border-ink-200 bg-surface shrink-0"><button @click="performCheckin()" class="btn btn-primary btn-lg w-full">${icon('clock', 'w-5 h-5')}Check in & start visit</button></div>
+            <div class="p-4 border-t border-ink-200 bg-surface shrink-0">
+              <button @click="performCheckin()" :disabled="checkinGeofence==='outside' && !geofenceExempt && !geoAuthorised" class="btn btn-lg w-full" :class="(checkinGeofence==='outside' && !geofenceExempt && !geoAuthorised) ? 'btn-secondary opacity-60' : 'btn-primary'">${icon('clock', 'w-5 h-5')}<span x-text="(checkinGeofence==='outside' && !geofenceExempt && !geoAuthorised) ? 'Move into the visit area to clock in' : 'Check in & start visit'"></span></button>
+            </div>
           </div>
         </div>
 

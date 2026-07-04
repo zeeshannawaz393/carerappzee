@@ -907,7 +907,7 @@ export const OBSERVATION_TYPES = [
   { id: 'pain', name: 'Pain score', icon: 'frown', group: 'Wellbeing',
     fields: [{ key: 'value', label: 'Pain (0–10)', type: 'score', min: 0, max: 10, required: true, escalateAtGte: 7 }, { key: 'site', label: 'Site', type: 'text' }, { key: 'note', label: 'Comment', type: 'textarea' }] },
   { id: 'mood', name: 'Mood & wellbeing', icon: 'smile', group: 'Wellbeing',
-    fields: [{ key: 'value', label: 'Mood (1–5)', type: 'score', min: 1, max: 5, required: true }, { key: 'anxiety', label: 'Signs of anxiety/distress?', type: 'boolean' }, { key: 'note', label: 'Comment', type: 'textarea' }] },
+    fields: [{ key: 'mood', label: 'Overall mood', type: 'select', required: true, options: ['Bright / happy', 'Content', 'Settled', 'Low / tearful', 'Very low / distressed'], abnormalValues: ['Low / tearful', 'Very low / distressed'] }, { key: 'anxiety', label: 'Signs of anxiety or distress?', type: 'boolean', abnormalValues: ['true'] }, { key: 'note', label: 'What was noticed / any triggers', type: 'textarea' }] },
   { id: 'sleep', name: 'Sleep', icon: 'moon', group: 'Wellbeing',
     fields: [{ key: 'quality', label: 'Sleep quality', type: 'select', required: true, options: ['Good', 'Fair', 'Poor', 'Awake most of night'], abnormalValues: ['Poor', 'Awake most of night'] }, { key: 'hours', label: 'Approx hours', type: 'number', unit: 'h', min: 0, max: 24 }] },
   { id: 'behaviour', name: 'Behaviour (BPSD)', icon: 'brain', group: 'Wellbeing',

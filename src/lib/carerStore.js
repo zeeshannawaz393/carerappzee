@@ -51,6 +51,13 @@ export const carerStore = {
     save()
     return s.clock[visitId]
   },
+  /** Merge metadata into a visit clock without moving the in/out times —
+   *  used by geofence lock / office authorisation. */
+  updateClock(visitId, meta = {}) {
+    s.clock[visitId] = { ...this.clock(visitId), ...meta }
+    save()
+    return s.clock[visitId]
+  },
 
   /* ---- tasks ---- */
   task(visitId, taskId) {
