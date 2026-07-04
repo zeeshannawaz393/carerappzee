@@ -77,17 +77,27 @@ grouped-list · body map enlarged · photo-with-consent gating · oral-care obs 
 clock-out path (review+sign) · behaviour + seizure Specialist charts. Plus the earlier
 Monitoring charts, mood face-scale, task↔obs linking, geofence auto-clock-out, `.field-sm`.
 
-## REMAINING backlog (start here)
-1. **Continence / catheter chart** — we capture the `output` obs (urine/catheter ml +
-   colour with `abnormalValues: Dark/Cloudy/Blood-stained`). Add a Monitoring card: 24h
-   voids / pad changes / catheter output total + colour trend (dark/cloudy/blood-stained →
-   UTI/blockage flag). Likely a small new `continence` obs type (pad change / catheter care)
-   plus a `buildSafety`-or-`buildSpecialist` card. Proxy: per-client depth, not safety-critical.
-2. **Wound-healing tracker** (biggest) — extend the static `skin` body-map into a
-   size/photo-over-time timeline per wound: store measurements + (consented) photos keyed
-   to a body-map location, and render a per-wound timeline on the client record showing
-   improving/deteriorating. Needs a small data model for a "wound" (id, site, measurements[],
-   photos[]) and a timeline view.
+## REMAINING backlog
+**Both remaining items are now built & live-verified (commit "Monitoring:
+continence/catheter chart + wound-healing tracker").** The ECM/CQC carer-app
+backlog from the gap analysis is complete; anything further is office/platform
+work (see "Out of scope" below).
+
+1. ~~**Continence / catheter chart**~~ — DONE. New `continence` obs type (care
+   checklist + status). `buildContinence` in `obsIntegrity.js` renders a
+   "Continence & catheter" card: 24h output bars with a low-output (blockage)
+   threshold line, 7-day urine-colour RAG strip, pad/continence-care count, and a
+   UTI-watch / low-output / blood-seen flag. Blends demo `TREND_HISTORY.catheter`
+   with live `output`/`continence` obs. Condition-gated by demo-data presence.
+2. ~~**Wound-healing tracker**~~ — DONE. `WOUNDS` seed + `woundsFor(id)` in
+   `carer.js`; `carerStore.addWoundMeasurement`/`woundMeasurements` (persisted);
+   `window.__woundMeasure` in `main.js`; `buildWounds` in `obsIntegrity.js`
+   renders a per-wound area (LxW mm²) sparkline with improving/deteriorating RAG,
+   latest measurement, consented-photo row, expandable history, and an inline
+   add-measurement form. Seed: Mary's improving sacral Cat-2 + deteriorating heel Cat-1.
+
+**Not yet pushed:** the commit is on local `main`; the push to origin was blocked
+by policy — run `git push origin main` to publish.
 
 ## Out of scope (office/platform, do NOT build in the carer app)
 Real-time missed-visit exceptions **dashboard**, on-time KPI analytics, statutory
