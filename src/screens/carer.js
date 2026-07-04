@@ -637,7 +637,7 @@ export function registerCarerApp(Alpine) {
         temperature: 'bg-red-50 text-red-600', pulse: 'bg-rose-50 text-rose-600',
         respirations: 'bg-sky-50 text-sky-600', bp: 'bg-violet-50 text-violet-600',
         spo2: 'bg-cyan-50 text-cyan-600', glucose: 'bg-amber-50 text-amber-600',
-        news2: 'bg-indigo-50 text-indigo-600', restore2: 'bg-danger-50 text-danger-600', pain: 'bg-orange-50 text-orange-600',
+        news2: 'bg-indigo-50 text-indigo-600', restore2: 'bg-danger-50 text-danger-600', postfall: 'bg-danger-50 text-danger-600', pain: 'bg-orange-50 text-orange-600',
         mood: 'bg-yellow-50 text-yellow-700', sleep: 'bg-indigo-50 text-indigo-600',
         behaviour: 'bg-purple-50 text-purple-600', seizure: 'bg-amber-50 text-amber-600',
         fluid: 'bg-blue-50 text-blue-600', food: 'bg-orange-50 text-orange-600',
@@ -688,8 +688,19 @@ export function registerCarerApp(Alpine) {
       const t = incidentType(this.inc.typeId)
       const row = carerStore.addIncident({ visitId: this.visitId, suId: this.rota.suId, suName: this.su.name, typeId: this.inc.typeId, typeName: t.name, ...this.inc })
       carerStore.clearDraft(this.visitId, 'incident')
-      this.refresh(); this.sheet = null; this.tab = 'log'; this.resetIncident()
-      window.__notify(`${row.ref} reported & escalated to office${row.riddor ? ' · RIDDOR flagged' : ''}`, 'warning')
+      const isFall = row.typeId === 'fall'
+      this.refresh(); this.resetIncident()
+      // §NG249 — a fall auto-triggers the post-fall observation bundle so the
+      // required checks (head injury, weight-bear, injury, obs, escalation) happen.
+      if (isFall) {
+        const pf = OBSERVATION_TYPES.find((o) => o.id === 'postfall')
+        this.tab = 'obs'
+        if (pf) this.openObs(pf); else this.sheet = null
+        window.__notify(`${row.ref} reported — now complete the post-fall checks`, 'warning')
+      } else {
+        this.sheet = null; this.tab = 'log'
+        window.__notify(`${row.ref} reported & escalated to office${row.riddor ? ' · RIDDOR flagged' : ''}`, 'warning')
+      }
     },
 
     /* ---------- notes / messages / sync ---------- */
