@@ -847,7 +847,7 @@ function bodyMapControl(arrExpr) {
     <div x-data="{ view:'standing' }">
       <div class="flex gap-1 bg-ink-100 rounded-lg p-1 mb-2">${seg}</div>
       <datalist id="bm-parts">${BODY_PART_SUGGESTIONS.map((p) => `<option value="${esc(p)}"></option>`).join('')}</datalist>
-      <div class="relative mx-auto rounded-lg ring-1 ring-ink-200 bg-white overflow-hidden select-none" style="max-width:280px"
+      <div class="relative mx-auto rounded-lg ring-1 ring-ink-200 bg-white overflow-hidden select-none" style="max-width:420px"
         @click="if($event.target.closest('[data-pin]'))return; const r=$event.currentTarget.getBoundingClientRect(); const x=Math.round((($event.clientX-r.left)/r.width)*1000)/10; const y=Math.round((($event.clientY-r.top)/r.height)*1000)/10; if(x<0||x>100||y<0||y>100)return; const p=(window.__bodySnap?window.__bodySnap(view,x,y):''); (${arrExpr} = ${arrExpr} || []).push({ view, x, y, part:p }); if(p) window.__notify('Marked: '+p,'info')">
         <img :src="'/body-map/'+view+'.svg'" class="w-full block pointer-events-none" alt="Body map — tap to mark a point" />
         ${[['sitting', SITTING_HOTSPOTS], ['lying', LYING_HOTSPOTS]].map(([v, spots]) => spots.map((s) => `<span x-show="view==='${v}'" class="absolute -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full ring-1 ring-primary-400/70 bg-primary-400/15 pointer-events-none" style="left:${s.x}%;top:${s.y}%" title="${esc(s.part)}"></span>`).join('')).join('')}
