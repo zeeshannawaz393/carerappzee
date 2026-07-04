@@ -258,10 +258,39 @@ export function registerCarerApp(Alpine) {
       this.clock = carerStore.clockIn(this.visitId, { method: this.checkinMethod, geofence: this.checkinGeofence, reason: this.checkinReason, welfare: this.welfare, verified: this.checkinGeofence === 'inside' && this.checkinMethod === 'gps', out: null, locked: false, autoOut: false })
       this.sheet = null
       window.__notify(this.checkinGeofence === 'inside' ? 'Clocked in · GPS confirmed' : `Clocked in · exception (${this.checkinMethod})`, this.checkinGeofence === 'inside' ? 'success' : 'warning')
+      // Late-start flag — the office is told when a visit starts well after its scheduled time.
+      if (this.timing.late) { carerStore.addMessage({ visitId: this.visitId, to: 'Office', text: `Late start — checked in ${this.timing.lateBy} min after the ${this.timing.fmt(this.timing.start)} scheduled start for ${this.su.name}.` }); this.inboxDot = true; window.__notify(`Checked in ${this.timing.lateBy} min late — office notified`, 'warning') }
       if (this.welfare === 'emergency') { this.personConfirmed = true; this.launchProtocol('unresponsive') }
       else if (this.welfare === 'seen-concern') window.__notify('Welfare concern noted — record details in observations', 'warning')
     },
     welfareLabel(id) { return (WELFARE_OUTCOMES.find((w) => w.id === id) || {}).label || '' },
+
+    /* ---- visit timing / adherence (ECM: late-start, short-visit, expected-out) ---- */
+    get timing() {
+      const parts = (this.rota.time || '').split(/[–—-]/).map((s) => s.trim())
+      const start = this.toMinutes(parts[0] || '0:0')
+      const end = this.toMinutes(parts[1] || parts[0] || '0:0')
+      const planned = Math.max(0, end - start)
+      const inM = this.clock.in ? this.toMinutes(this.clock.in) : null
+      const outM = this.clock.out ? this.toMinutes(this.clock.out) : null
+      const fmt = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(((m % 60) + 60) % 60).padStart(2, '0')}`
+      const lateBy = inM != null ? inM - start : null
+      const expectedOut = inM != null ? inM + planned : end
+      const actual = inM != null && outM != null ? outM - inM : null
+      return {
+        start, end, planned, inM, outM, lateBy, actual, fmt,
+        schedLabel: `${fmt(start)}–${fmt(end)}`,
+        expectedOutLabel: fmt(expectedOut),
+        late: lateBy != null && lateBy > 10,
+        short: actual != null && planned > 0 && actual < planned * 0.6,
+      }
+    },
+    /** Proactive "I'm running late" — notify the office before the visit even starts. */
+    runningLate() {
+      carerStore.addMessage({ visitId: this.visitId, to: 'Office', text: `Running late for ${this.su.name}'s ${this.rota.visit} visit (scheduled ${this.timing.schedLabel}).` })
+      this.refresh(); this.inboxDot = true
+      window.__notify('Office told you are running late', 'info')
+    },
 
     /* ---- outcome dimensions (§14) ---- */
     get visitDimensions() {
@@ -300,6 +329,8 @@ export function registerCarerApp(Alpine) {
       this.clock = carerStore.clockOut(this.visitId, { leavingSafe: { ...this.leavingSafe }, reasonCode: this.reasonCode, dimensions: dims })
       this.sheet = null
       window.__notify(`Visit ${dims.display} — clocked out ${this.clock.out}`, dims.display === 'Completed' ? 'success' : 'warning')
+      // Short-visit flag — care cut well under the commissioned time is a safeguarding/contract concern.
+      if (this.timing.short) { carerStore.addMessage({ visitId: this.visitId, to: 'Office', text: `Short visit — ${this.timing.actual} min delivered of ${this.timing.planned} planned for ${this.su.name}. Reason: ${this.reasonCode || dims.display}.` }); this.inboxDot = true; window.__notify(`Short visit flagged to office (${this.timing.actual}/${this.timing.planned} min)`, 'warning') }
     },
 
     /* ---- geofence (§14 — location boundary) ---------------------------------
@@ -1059,7 +1090,20 @@ export function renderCarerVisit({ visit }) {
         <!-- OVERVIEW -->
         <div x-show="tab==='overview'" class="p-4 space-y-4">
           <template x-if="!clock.in">
-            <button @click="openCheckin()" class="btn btn-primary btn-lg w-full">${icon('clock', 'w-4 h-4')}Clock in to start visit</button>
+            <div class="space-y-2.5">
+              <button @click="openCheckin()" class="btn btn-primary btn-lg w-full">${icon('clock', 'w-4 h-4')}Clock in to start visit</button>
+              <div class="flex items-center justify-between rounded-xl bg-white ring-1 ring-ink-100 px-3.5 py-2.5">
+                <span class="text-[13px] text-ink-600 inline-flex items-center gap-1.5">${icon('clock', 'w-3.5 h-3.5 text-ink-400')}Scheduled <span class="font-semibold text-ink-800 tabular-nums" x-text="timing.schedLabel"></span></span>
+                <button @click="runningLate()" class="text-[13px] font-semibold text-warning-700 active:text-warning-800">Running late?</button>
+              </div>
+            </div>
+          </template>
+          <!-- adherence: expected-out + late flag while the visit is live -->
+          <template x-if="clock.in && !clock.out">
+            <div class="flex items-center justify-between rounded-xl px-3.5 py-2.5 ring-1" :class="timing.late ? 'bg-warning-50 ring-warning-100' : 'bg-white ring-ink-100'">
+              <span class="text-[13px] inline-flex items-center gap-1.5" :class="timing.late ? 'text-warning-800' : 'text-ink-600'">${icon('clock', 'w-3.5 h-3.5')}<span x-text="'In '+clock.in"></span> · expected out <span class="font-semibold tabular-nums" x-text="timing.expectedOutLabel"></span></span>
+              <span x-show="timing.late" x-cloak class="badge bg-warning-100 text-warning-800">Late start</span>
+            </div>
           </template>
 
           <!-- geofence: auto clocked-out & locked — office authorisation required to resume -->
@@ -1106,7 +1150,7 @@ export function renderCarerVisit({ visit }) {
             <div class="card p-3 text-center"><p class="text-xl font-bold text-ink-900" x-text="scheduled.length"></p><p class="text-xs text-ink-500">Meds due</p></div>
             <div class="card p-3 text-center"><p class="text-xl font-bold text-ink-900" x-text="observations.length"></p><p class="text-xs text-ink-500">Obs done</p></div>
           </div>
-          ${vType !== 'standard' ? `<div class="rounded-xl bg-info-50 ring-1 ring-info-100 p-3"><p class="text-xs font-semibold text-info-700 uppercase tracking-wide mb-0.5 flex items-center gap-1.5">${icon('info', 'w-3.5 h-3.5')}${esc(vTypeMeta.label)} visit</p><p class="text-sm text-info-800">${esc(vTypeMeta.note)}</p></div>` : ''}
+          ${vType !== 'standard' ? `<div class="rounded-xl bg-info-50 ring-1 ring-info-100 p-3"><p class="text-xs font-semibold text-info-700 uppercase tracking-wide mb-0.5 flex items-center gap-1.5">${icon('info', 'w-3.5 h-3.5')}${esc(vTypeMeta.label)}</p><p class="text-sm text-info-800">${esc(vTypeMeta.note)}</p></div>` : ''}
           ${jitMarkup}
           <!-- §22 pre-visit safety briefing -->
           <div class="rounded-xl bg-warning-50 ring-1 ring-warning-100 p-3.5">
