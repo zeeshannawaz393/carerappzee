@@ -213,7 +213,7 @@
   .nav-item.active { @apply bg-white text-primary-700 shadow-[var(--shadow-card)] font-semibold; }
 
   /* ---- Section heading ---- */
-  .section-title { @apply text-[13px] font-semibold uppercase tracking-wider text-ink-400; }
+  .section-title { @apply text-[13px] font-semibold uppercase tracking-wider text-ink-500; }
 }
 
 /* Animations */
